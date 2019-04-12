@@ -27,6 +27,7 @@ struct stCoSpec_t
 	void *value;
 };
 
+/* 栈描述符 */
 struct stStackMem_t
 {
 	stCoRoutine_t* occupy_co;
@@ -36,6 +37,7 @@ struct stStackMem_t
 
 };
 
+/* 共享栈描述符 */
 struct stShareStack_t
 {
 	unsigned int alloc_idx;
@@ -44,8 +46,7 @@ struct stShareStack_t
 	stStackMem_t** stack_array;
 };
 
-
-
+/* 协程描述符 */
 struct stCoRoutine_t
 {
 	stCoRoutineEnv_t *env;
@@ -70,6 +71,7 @@ struct stCoRoutine_t
 	unsigned int save_size;
 	char* save_buffer;
 
+	/* 协程的特定数据 */
 	stCoSpec_t aSpec[1024];
 
 };
