@@ -48,6 +48,7 @@ using namespace std;
 stCoRoutine_t *GetCurrCo( stCoRoutineEnv_t *env );
 struct stCoEpoll_t;
 
+/* 协程的调度环境 */
 struct stCoRoutineEnv_t
 {
 	stCoRoutine_t *pCallStack[ 128 ];
@@ -334,6 +335,8 @@ struct stCoEpoll_t
 	co_epoll_res *result; 
 
 };
+
+/* 回调函数 */
 typedef void (*OnPreparePfn_t)( stTimeoutItem_t *,struct epoll_event &ev, stTimeoutItemLink_t *active );
 typedef void (*OnProcessPfn_t)( stTimeoutItem_t *);
 struct stTimeoutItem_t
@@ -712,6 +715,7 @@ static short EpollEvent2Poll( uint32_t events )
 	return e;
 }
 
+/* 分配204800个线程 */
 static stCoRoutineEnv_t* g_arrCoEnvPerThread[ 204800 ] = { 0 };
 void co_init_curr_thread_env()
 {
@@ -733,6 +737,7 @@ void co_init_curr_thread_env()
 	stCoEpoll_t *ev = AllocEpoll();
 	SetEpoll( env,ev );
 }
+
 stCoRoutineEnv_t *co_get_curr_thread_env()
 {
 	return g_arrCoEnvPerThread[ GetPid() ];
