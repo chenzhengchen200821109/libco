@@ -64,6 +64,7 @@ void co_log_err( const char *fmt,... )
 }
 
 
+/* time stamp counter */
 #if defined( __LIBCO_RDTSCP__) 
 static unsigned long long counter(void)
 {
@@ -77,6 +78,8 @@ static unsigned long long counter(void)
 	return (o | lo);
 
 }
+
+/* CPU MHz - 2494.269 */
 static unsigned long long getCpuKhz()
 {
 	FILE *fp = fopen("/proc/cpuinfo","r");
@@ -114,6 +117,7 @@ static unsigned long long GetTickMS()
 #endif
 }
 
+/* get thread ID and process ID */
 static pid_t GetPid()
 {
     static __thread pid_t pid = 0;
@@ -148,14 +152,16 @@ static pid_t GetPid()
 	return p ? *(pid_t*)(p + 18) : getpid();
 }
 */
+
+/* 从双向链表中删除节点 */
 template <class T,class TLink>
 void RemoveFromLink(T *ap)
 {
-	TLink *lst = ap->pLink;
+	TLink *lst = ap->pLink; /* 域pLink指向链表头 */
 	if(!lst) return ;
 	assert( lst->head && lst->tail );
 
-	if( ap == lst->head )
+	if( ap == lst->head ) /* ap指向的是头节点 */
 	{
 		lst->head = ap->pNext;
 		if(lst->head)
@@ -171,7 +177,7 @@ void RemoveFromLink(T *ap)
 		}
 	}
 
-	if( ap == lst->tail )
+	if( ap == lst->tail ) /* ap指向的是尾节点 */
 	{
 		lst->tail = ap->pPrev;
 		if(lst->tail)
@@ -184,6 +190,7 @@ void RemoveFromLink(T *ap)
 		ap->pNext->pPrev = ap->pPrev;
 	}
 
+	/* 重置ap的域pPrev，pNext及pLink */
 	ap->pPrev = ap->pNext = NULL;
 	ap->pLink = NULL;
 }
@@ -191,24 +198,25 @@ void RemoveFromLink(T *ap)
 template <class TNode,class TLink>
 void inline AddTail(TLink*apLink,TNode *ap)
 {
-	if( ap->pLink )
+	if( ap->pLink ) /* ap的域已经指向双向链表 */
 	{
 		return ;
 	}
-	if(apLink->tail)
+	if(apLink->tail) /* 双向链表不为空链表 */
 	{
 		apLink->tail->pNext = (TNode*)ap;
 		ap->pNext = NULL;
 		ap->pPrev = apLink->tail;
 		apLink->tail = ap;
 	}
-	else
+	else /* 双向链表为空链表 */
 	{
 		apLink->head = apLink->tail = ap;
 		ap->pNext = ap->pPrev = NULL;
 	}
 	ap->pLink = apLink;
 }
+
 template <class TNode,class TLink>
 void inline PopHead( TLink*apLink )
 {
@@ -266,6 +274,7 @@ void inline Join( TLink*apLink,TLink *apOther )
 }
 
 /////////////////for copy stack //////////////////////////
+/* 分配栈描述符 */
 stStackMem_t* co_alloc_stackmem(unsigned int stack_size)
 {
 	stStackMem_t* stack_mem = (stStackMem_t*)malloc(sizeof(stStackMem_t));
@@ -276,6 +285,7 @@ stStackMem_t* co_alloc_stackmem(unsigned int stack_size)
 	return stack_mem;
 }
 
+/* 分配共享栈描述符 */
 stShareStack_t* co_alloc_sharestack(int count, int stack_size)
 {
 	stShareStack_t* share_stack = (stShareStack_t*)malloc(sizeof(stShareStack_t));
@@ -293,6 +303,7 @@ stShareStack_t* co_alloc_sharestack(int count, int stack_size)
 	return share_stack;
 }
 
+/* 从共享栈描述符中分配一个栈描述符 */
 static stStackMem_t* co_get_stackmem(stShareStack_t* share_stack)
 {
 	if (!share_stack)
