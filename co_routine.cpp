@@ -352,6 +352,7 @@ struct stTimeoutItem_t
 
 	unsigned long long ullExpireTime;
 
+	/* */
 	OnPreparePfn_t pfnPrepare;
 	OnProcessPfn_t pfnProcess;
 
@@ -455,6 +456,8 @@ inline void TakeAllTimeout( stTimeout_t *apTimeout,unsigned long long allNow,stT
 
 
 }
+
+/* 协程的入口函数 */
 static int CoRoutineFunc( stCoRoutine_t *co,void * )
 {
 	if( co->pfn )
@@ -465,13 +468,12 @@ static int CoRoutineFunc( stCoRoutine_t *co,void * )
 
 	stCoRoutineEnv_t *env = co->env;
 
-	co_yield_env( env );
+	co_yield_env( env ); // 执行上一个协程
 
 	return 0;
 }
 
-
-
+/* 在一个协程调度环境下构造一个协程 */
 struct stCoRoutine_t *co_create_env( stCoRoutineEnv_t * env, const stCoRoutineAttr_t* attr,
 		pfn_co_routine_t pfn,void *arg )
 {
@@ -483,17 +485,17 @@ struct stCoRoutine_t *co_create_env( stCoRoutineEnv_t * env, const stCoRoutineAt
 	}
 	if( at.stack_size <= 0 )
 	{
-		at.stack_size = 128 * 1024;
+		at.stack_size = 128 * 1024; // 128KB
 	}
 	else if( at.stack_size > 1024 * 1024 * 8 )
 	{
-		at.stack_size = 1024 * 1024 * 8;
+		at.stack_size = 1024 * 1024 * 8; // 8MB
 	}
 
 	if( at.stack_size & 0xFFF ) 
 	{
 		at.stack_size &= ~0xFFF;
-		at.stack_size += 0x1000;
+		at.stack_size += 0x1000; // 4KB对齐
 	}
 
 	stCoRoutine_t *lp = (stCoRoutine_t*)malloc( sizeof(stCoRoutine_t) );
@@ -506,12 +508,12 @@ struct stCoRoutine_t *co_create_env( stCoRoutineEnv_t * env, const stCoRoutineAt
 	lp->arg = arg;
 
 	stStackMem_t* stack_mem = NULL;
-	if( at.share_stack )
+	if( at.share_stack ) // 如果指定了共享栈
 	{
 		stack_mem = co_get_stackmem( at.share_stack);
 		at.stack_size = at.share_stack->stack_size;
 	}
-	else
+	else // 如果没有指定共享栈则分配栈内存
 	{
 		stack_mem = co_alloc_stackmem(at.stack_size);
 	}
@@ -532,6 +534,7 @@ struct stCoRoutine_t *co_create_env( stCoRoutineEnv_t * env, const stCoRoutineAt
 	return lp;
 }
 
+/* 构造一个协程 */
 int co_create( stCoRoutine_t **ppco,const stCoRoutineAttr_t *attr,pfn_co_routine_t pfn,void *arg )
 {
 	if( !co_get_curr_thread_env() ) 
@@ -542,22 +545,28 @@ int co_create( stCoRoutine_t **ppco,const stCoRoutineAttr_t *attr,pfn_co_routine
 	*ppco = co;
 	return 0;
 }
+
+/* 销毁一个协程 */
 void co_free( stCoRoutine_t *co )
 {
-    if (!co->cIsShareStack) 
+    if (!co->cIsShareStack) // 如果不是共享栈
     {    
         free(co->stack_mem->stack_buffer);
         free(co->stack_mem);
     }   
     free( co );
 }
+
+/* 销毁一个协程，函数co_free()的包装 */
 void co_release( stCoRoutine_t *co )
 {
     co_free( co );
 }
 
+/* 协程的调度 */
 void co_swap(stCoRoutine_t* curr, stCoRoutine_t* pending_co);
 
+/* 保存当前的协程，执行指定的协程 */
 void co_resume( stCoRoutine_t *co )
 {
 	stCoRoutineEnv_t *env = co->env;
@@ -572,6 +581,8 @@ void co_resume( stCoRoutine_t *co )
 
 
 }
+
+/* 放弃当前的协程，执行上一个协程 */
 void co_yield_env( stCoRoutineEnv_t *env )
 {
 	
@@ -588,6 +599,8 @@ void co_yield_ct()
 
 	co_yield_env( co_get_curr_thread_env() );
 }
+
+/* 函数co_yield_env()的包装函数 */
 void co_yield( stCoRoutine_t *co )
 {
 	co_yield_env( co->env );
@@ -618,12 +631,12 @@ void co_swap(stCoRoutine_t* curr, stCoRoutine_t* pending_co)
 	char c;
 	curr->stack_sp= &c;
 
-	if (!pending_co->cIsShareStack)
+	if (!pending_co->cIsShareStack) /* 如果不是共享栈 */
 	{
 		env->pending_co = NULL;
 		env->occupy_co = NULL;
 	}
-	else 
+	else /* 如果是共享栈 */
 	{
 		env->pending_co = pending_co;
 		//get last occupy co on the same stack mem
@@ -658,8 +671,10 @@ void co_swap(stCoRoutine_t* curr, stCoRoutine_t* pending_co)
 
 
 
-//int poll(struct pollfd fds[], nfds_t nfds, int timeout);
-// { fd,events,revents }
+/* 
+ * int poll(struct pollfd fds[], nfds_t nfds, int timeout);
+ * -- wait for some events on a file descriptor --
+ */
 struct stPollItem_t ;
 struct stPoll_t : public stTimeoutItem_t 
 {
@@ -681,7 +696,7 @@ struct stPollItem_t : public stTimeoutItem_t
 	struct pollfd *pSelf;
 	stPoll_t *pPoll;
 
-	struct epoll_event stEvent;
+	struct epoll_event stEvent; // epoll
 };
 /*
  *   EPOLLPRI 		POLLPRI    // There is urgent data to read.  
@@ -752,7 +767,7 @@ void OnPollProcessEvent( stTimeoutItem_t * ap )
 void OnPollPreparePfn( stTimeoutItem_t * ap,struct epoll_event &e,stTimeoutItemLink_t *active )
 {
 	stPollItem_t *lp = (stPollItem_t *)ap;
-	lp->pSelf->revents = EpollEvent2Poll( e.events );
+	lp->pSelf->revents = EpollEvent2Poll( e.events ); /* returned events */
 
 
 	stPoll_t *pPoll = lp->pPoll;
@@ -776,6 +791,14 @@ void co_eventloop( stCoEpoll_t *ctx,pfn_co_eventloop_t pfn,void *arg )
 	{
 		ctx->result =  co_epoll_res_alloc( stCoEpoll_t::_EPOLL_SIZE );
 	}
+	/*
+	 * struct co_epoll_res
+	 * {
+	 *     int size;
+	 *	   struct epoll_event *events;
+	 *	   struct kevent *eventlist;
+	 * };
+	 */
 	co_epoll_res *result = ctx->result;
 
 
@@ -847,6 +870,7 @@ void co_eventloop( stCoEpoll_t *ctx,pfn_co_eventloop_t pfn,void *arg )
 
 	}
 }
+
 void OnCoroutineEvent( stTimeoutItem_t * ap )
 {
 	stCoRoutine_t *co = (stCoRoutine_t*)ap->pArg;
