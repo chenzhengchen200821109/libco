@@ -30,7 +30,7 @@ struct stCoSpec_t
 /* 栈描述符 */
 struct stStackMem_t
 {
-	stCoRoutine_t* occupy_co;
+	stCoRoutine_t* occupy_co; // 指向拥有此块栈内存的协程
 	int stack_size;
 	char* stack_bp; //stack_buffer + stack_size
 	char* stack_buffer;

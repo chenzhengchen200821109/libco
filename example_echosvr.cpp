@@ -85,7 +85,7 @@ static void *readwrite_routine( void *arg )
 			struct pollfd pf = { 0 };
 			pf.fd = fd;
 			pf.events = (POLLIN|POLLERR|POLLHUP);
-			co_poll( co_get_epoll_ct(),&pf,1,1000);
+			co_poll( co_get_epoll_ct(),&pf,1,1000); // 切换出去
 
 			int ret = read( fd,buf,sizeof(buf) );
 			if( ret > 0 )
@@ -105,6 +105,7 @@ static void *readwrite_routine( void *arg )
 	}
 	return 0;
 }
+
 int co_accept(int fd, struct sockaddr *addr, socklen_t *len );
 static void *accept_routine( void * )
 {
@@ -119,7 +120,7 @@ static void *accept_routine( void * )
 			printf("empty\n"); //sleep
 			struct pollfd pf = { 0 };
 			pf.fd = -1;
-			poll( &pf,1,1000);
+			poll( &pf,1,1000); //切换出去
 
 			continue;
 
@@ -137,16 +138,16 @@ static void *accept_routine( void * )
 			co_poll( co_get_epoll_ct(),&pf,1,1000 );
 			continue;
 		}
-		if( g_readwrite.empty() )
+		if( g_readwrite.empty() ) // readwrite_routine协程还未准备好
 		{
 			close( fd );
 			continue;
 		}
-		SetNonBlock( fd );
+		SetNonBlock( fd ); // fd现在是connected fd啦
 		task_t *co = g_readwrite.top();
 		co->fd = fd;
 		g_readwrite.pop();
-		co_resume( co->co );
+		co_resume( co->co ); // 执行readwrtie_routine协程
 	}
 	return 0;
 }
@@ -208,12 +209,13 @@ int main(int argc,char *argv[])
 	}
 	const char *ip = argv[1];
 	int port = atoi( argv[2] );
-	int cnt = atoi( argv[3] );
-	int proccnt = atoi( argv[4] );
+	int cnt = atoi( argv[3] ); //协程数量
+	int proccnt = atoi( argv[4] ); //进程数量
 	bool deamonize = argc >= 6 && strcmp(argv[5], "-d") == 0;
 
 	g_listen_fd = CreateTcpSocket( port,ip,true );
 	listen( g_listen_fd,1024 );
+	// g_listen_fd的判断应该在listen()函数调用之前吗？
 	if(g_listen_fd==-1){
 		printf("Port %d is in use\n", port);
 		return -1;
@@ -226,7 +228,7 @@ int main(int argc,char *argv[])
 	{
 
 		pid_t pid = fork();
-		if( pid > 0 )
+		if( pid > 0 ) // in parent process
 		{
 			continue;
 		}
@@ -234,6 +236,7 @@ int main(int argc,char *argv[])
 		{
 			break;
 		}
+		// in child process
 		for(int i=0;i<cnt;i++)
 		{
 			task_t * task = (task_t*)calloc( 1,sizeof(task_t) );

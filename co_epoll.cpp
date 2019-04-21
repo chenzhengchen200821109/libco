@@ -24,19 +24,46 @@
 
 #if !defined( __APPLE__ ) && !defined( __FreeBSD__ )
 
+/* 
+ * 函数epoll_wait()的封装
+ * int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+ */
 int	co_epoll_wait( int epfd,struct co_epoll_res *events,int maxevents,int timeout )
 {
 	return epoll_wait( epfd,events->events,maxevents,timeout );
 }
+
+/*
+ * 函数epoll_ctl()的封装
+ * int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event);
+ *
+ * typedef union epoll_data {
+ *   void *ptr;
+ *   int fd;
+ *   uint32_t u32;
+ *   uint64_t u64;
+ * } epoll_data_t;
+ * 
+ * struct epoll_event {
+ *   uint32_t events;
+ *   epoll_data_t data;
+ * };
+ */
 int	co_epoll_ctl( int epfd,int op,int fd,struct epoll_event * ev )
 {
 	return epoll_ctl( epfd,op,fd,ev );
 }
+
+/* 
+ * 函数epoll_create()的封装
+ * int epoll_create(int size);
+ */ 
 int	co_epoll_create( int size )
 {
 	return epoll_create( size );
 }
 
+/* 分配一个struct epoll_event类型的数组 */
 struct co_epoll_res *co_epoll_res_alloc( int n )
 {
 	struct co_epoll_res * ptr = 
@@ -48,6 +75,8 @@ struct co_epoll_res *co_epoll_res_alloc( int n )
 	return ptr;
 
 }
+
+/* 销毁一个struct epoll_event类型的数组 */
 void co_epoll_res_free( struct co_epoll_res * ptr )
 {
 	if( !ptr ) return;
@@ -55,7 +84,7 @@ void co_epoll_res_free( struct co_epoll_res * ptr )
 	free( ptr );
 }
 
-#else
+#else // FreeBSD or Apple
 class clsFdMap // million of fd , 1024 * 1024 
 {
 private:

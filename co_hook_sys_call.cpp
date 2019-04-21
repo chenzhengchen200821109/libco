@@ -56,6 +56,7 @@ struct rpchook_t
 	struct timeval read_timeout;
 	struct timeval write_timeout;
 };
+
 static inline pid_t GetPid()
 {
 	char **p = (char**)pthread_self();
@@ -178,12 +179,12 @@ static inline ll64_t diff_ms(struct timeval &begin,struct timeval &end)
 }
 
 
-
 static inline rpchook_t * get_by_fd( int fd )
 {
+	// fd最大不超过102400
 	if( fd > -1 && fd < (int)sizeof(g_rpchook_socket_fd) / (int)sizeof(g_rpchook_socket_fd[0]) )
 	{
-		return g_rpchook_socket_fd[ fd ];
+		return g_rpchook_socket_fd[ fd ]; // 如果没有调用alloc_by_fd()则返回0
 	}
 	return NULL;
 }
@@ -219,7 +220,7 @@ int socket(int domain, int type, int protocol)
 
 	if( !co_is_enable_sys_hook() )
 	{
-		return g_sys_socket_func( domain,type,protocol );
+		return g_sys_socket_func( domain,type,protocol ); // 系统socket函数
 	}
 	int fd = g_sys_socket_func(domain,type,protocol);
 	if( fd < 0 )
@@ -282,7 +283,7 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
 	{
 		memset( &pf,0,sizeof(pf) );
 		pf.fd = fd;
-		pf.events = ( POLLOUT | POLLERR | POLLHUP );
+		pf.events = ( POLLOUT | POLLERR | POLLHUP ); // 描述符可写
 
 		pollret = poll( &pf,1,25000 );
 

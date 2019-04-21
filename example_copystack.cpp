@@ -36,13 +36,14 @@ void* RoutineFunc(void* args)
 		sprintf(sBuff, "from routineid %d stack addr %p\n", *routineid, sBuff);
 
 		printf("%s", sBuff);
-		poll(NULL, 0, 1000); //sleep 1s
+		poll(NULL, 0, 1000); //sleep 1ms
 	}
 	return NULL;
 }
 
 int main()
 {
+	// 分配一个共享栈，栈的大小为128KB
 	stShareStack_t* share_stack= co_alloc_sharestack(1, 1024 * 128);
 	stCoRoutineAttr_t attr;
 	attr.stack_size = 0;
@@ -54,6 +55,8 @@ int main()
 	{
 		routineid[i] = i;
 		co_create(&co[i], &attr, RoutineFunc, routineid + i);
+		// 从这里切换到第一个协程，然后从第一个协程又切换回来
+		// 后再次切换到第二个协程，然后再切换回来
 		co_resume(co[i]);
 	}
 	co_eventloop(co_get_epoll_ct(), NULL, NULL);

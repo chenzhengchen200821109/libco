@@ -47,6 +47,7 @@ struct task_t
 	struct sockaddr_in addr;
 };
 
+/* 设置非阻塞描述符 */
 static int SetNonBlock(int iSock)
 {
     int iFlags;
@@ -57,8 +58,6 @@ static int SetNonBlock(int iSock)
     int ret = fcntl(iSock, F_SETFL, iFlags);
     return ret;
 }
-
-
 
 static void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr)
 {
@@ -117,6 +116,7 @@ static void *poll_routine( void *arg )
 		SetNonBlock( fd );
 		v[i].fd = fd;
 
+		// 非阻塞connect()函数
 		int ret = connect(fd,(struct sockaddr*)&v[i].addr,sizeof( v[i].addr )); 
 		printf("co %p connect i %ld ret %d errno %d (%s)\n",
 			co_self(),i,ret,errno,strerror(errno));
@@ -126,7 +126,7 @@ static void *poll_routine( void *arg )
 	for(size_t i=0;i<v.size();i++)
 	{
 		pf[i].fd = v[i].fd;
-		pf[i].events = ( POLLOUT | POLLERR | POLLHUP );
+		pf[i].events = ( POLLOUT | POLLERR | POLLHUP ); //描述符可写
 	}
 	set<int> setRaiseFds;
 	size_t iWaitCnt = v.size();
@@ -167,6 +167,8 @@ static void *poll_routine( void *arg )
 			}
 		}
 	}
+
+	// 关闭描述符
 	for(size_t i=0;i<v.size();i++)
 	{
 		close( v[i].fd );
@@ -193,6 +195,7 @@ int main(int argc,char *argv[])
 	poll_routine( &v2 );
 	printf("--------------------- routine -------------------\n");
 
+	// 创建10个新协程
 	for(int i=0;i<10;i++)
 	{
 		stCoRoutine_t *co = 0;

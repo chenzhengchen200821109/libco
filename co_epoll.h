@@ -30,6 +30,7 @@
 
 #include <sys/epoll.h>
 
+/* 封装了一个struct epoll_event类型的数组 */
 struct co_epoll_res
 {
 	int size;
@@ -39,7 +40,10 @@ struct co_epoll_res
 int 	co_epoll_wait( int epfd,struct co_epoll_res *events,int maxevents,int timeout );
 int 	co_epoll_ctl( int epfd,int op,int fd,struct epoll_event * );
 int 	co_epoll_create( int size );
+
+/* 分配一个struct epoll_event类型的数组 */
 struct 	co_epoll_res *co_epoll_res_alloc( int n );
+/* 销毁一个struct epoll_event类型的数组 */
 void 	co_epoll_res_free( struct co_epoll_res * );
 
 #else
@@ -88,6 +92,7 @@ struct 	co_epoll_res *co_epoll_res_alloc( int n );
 void 	co_epoll_res_free( struct co_epoll_res * );
 
 #endif
-#endif
+
+#endif // __CO_EPOLL_H__
 
 

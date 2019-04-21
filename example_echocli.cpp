@@ -42,6 +42,7 @@ struct stEndPoint
 	unsigned short int port;
 };
 
+/* */
 static void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr)
 {
 	bzero(&addr,sizeof(addr));
@@ -116,13 +117,20 @@ static void *readwrite_routine( void *arg )
 			struct sockaddr_in addr;
 			SetAddr(endpoint->ip, endpoint->port, addr);
 			ret = connect(fd,(struct sockaddr*)&addr,sizeof(addr));
-						
+
+			// EALREADY -- The socket is nonblocking and a previous connection attempt has not yet been completed.
+			// EINPROGRESS -- The socket is nonblocking and the connection cannot be completed immediately.  
+			//                It is possible to select(2) or poll(2) for completion by selecting the socket for writing.  
+			//                After select(2) indicates writability, use getsockopt(2) to read the SO_ERROR option at level 
+			//                SOL_SOCKET  to  determine	whether connect()  completed	successfully  (SO_ERROR is zero) 
+			//                or unsuccessfully (SO_ERROR is one of the usual error codes listed here, explaining the reason
+			//   			  for the failure).
 			if ( errno == EALREADY || errno == EINPROGRESS )
 			{       
 				struct pollfd pf = { 0 };
 				pf.fd = fd;
 				pf.events = (POLLOUT|POLLERR|POLLHUP);
-				co_poll( co_get_epoll_ct(),&pf,1,200);
+				co_poll( co_get_epoll_ct(),&pf,1,200); 
 				//check connect
 				int error = 0;
 				uint32_t socklen = sizeof(error);
@@ -158,7 +166,7 @@ static void *readwrite_routine( void *arg )
 				//printf("co %p read ret %d errno %d (%s)\n",
 				//		co_self(), ret,errno,strerror(errno));
 				close(fd);
-				fd = -1;
+				fd = -1; // 有错误发生要重新建立连接
 				AddFailCnt();
 			}
 			else
@@ -172,7 +180,7 @@ static void *readwrite_routine( void *arg )
 			//printf("co %p write ret %d errno %d (%s)\n",
 			//		co_self(), ret,errno,strerror(errno));
 			close(fd);
-			fd = -1;
+			fd = -1; // 有错误发生要重新建立连接
 			AddFailCnt();
 		}
 	}
@@ -184,9 +192,10 @@ int main(int argc,char *argv[])
 	stEndPoint endpoint;
 	endpoint.ip = argv[1];
 	endpoint.port = atoi(argv[2]);
-	int cnt = atoi( argv[3] );
-	int proccnt = atoi( argv[4] );
-	
+	int cnt = atoi( argv[3] ); //协程数量
+	int proccnt = atoi( argv[4] ); //进程数量
+
+	// 为什么要忽略SIGPIPE信号？
 	struct sigaction sa;
 	sa.sa_handler = SIG_IGN;
 	sigaction( SIGPIPE, &sa, NULL );
@@ -195,7 +204,7 @@ int main(int argc,char *argv[])
 	{
 
 		pid_t pid = fork();
-		if( pid > 0 )
+		if( pid > 0 ) // parent process
 		{
 			continue;
 		}
@@ -203,6 +212,7 @@ int main(int argc,char *argv[])
 		{
 			break;
 		}
+		// child process
 		for(int i=0;i<cnt;i++)
 		{
 			stCoRoutine_t *co = 0;
