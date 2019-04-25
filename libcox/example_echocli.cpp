@@ -159,6 +159,8 @@ static void *readwrite_routine( void *arg )
 			}
 			else
 			{
+                buf[ret+1] = '\0';
+                printf("%s\n", buf);
 				//printf("echo %s fd %d\n", buf,fd);
 				AddSuccCnt();
 			}
