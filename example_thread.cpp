@@ -44,6 +44,7 @@ int main(int argc,char *argv[])
 	pthread_t tid[ cnt ];
 	for(int i=0;i<cnt;i++)
 	{
+		// 创建线程
 		pthread_create( tid + i,NULL,routine_func,0);
 	}
 	for(;;)

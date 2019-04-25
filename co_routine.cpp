@@ -51,13 +51,14 @@ struct stCoEpoll_t;
 /* 协程的调度环境 */
 struct stCoRoutineEnv_t
 {
-	stCoRoutine_t *pCallStack[ 128 ]; //就像函数的调用栈一样，调用协程保存在前面，被调用协程保存在后面
+	stCoRoutine_t *pCallStack[ 128 ]; //就像函数的调用栈一样，调用协程保存在前面，被调用协程保存在后面，最多128个
 	int iCallStackSize;
 	stCoEpoll_t *pEpoll;
 
 	//for copy stack log lastco and nextco
 	stCoRoutine_t* pending_co;
 	stCoRoutine_t* occupy_co;
+	pid_t tid; // 占有此协程环境的线程ID
 };
 //int socket(int domain, int type, int protocol);
 void co_log_err( const char *fmt,... )
@@ -758,13 +759,16 @@ static short EpollEvent2Poll( uint32_t events )
 	return e;
 }
 
-/* 分配204800个线程 */
-static stCoRoutineEnv_t* g_arrCoEnvPerThread[ 204800 ] = { 0 };
+/* 同一个进程下最多有204800个协程环境 */
+static stCoRoutineEnv_t* g_arrCoEnvPerThread[ 204800 ] = { 0 }; // 一定要初始化
 
 /* 初始化协程环境，初始化主协程 */
 void co_init_curr_thread_env()
 {
-	pid_t pid = GetPid();	
+	pid_t pid = GetPid();
+	if (pid >= 204800) {
+		pid = (pid % 204800);
+	}
 	g_arrCoEnvPerThread[ pid ] = (stCoRoutineEnv_t*)calloc( 1,sizeof(stCoRoutineEnv_t) );
 	stCoRoutineEnv_t *env = g_arrCoEnvPerThread[ pid ];
 
@@ -788,7 +792,11 @@ void co_init_curr_thread_env()
 
 stCoRoutineEnv_t *co_get_curr_thread_env()
 {
-	return g_arrCoEnvPerThread[ GetPid() ];
+    pid_t pid = GetPid();
+	if (pid >= 204800) {
+		pid = (pid % 204800);
+	}
+	return g_arrCoEnvPerThread[ pid ];
 }
 
 /* 一旦时间到期则切换协程执行 */
@@ -946,6 +954,7 @@ void FreeEpoll( stCoEpoll_t *ctx )
 
 stCoRoutine_t *GetCurrCo( stCoRoutineEnv_t *env )
 {
+	assert((env->iCallStackSize - 1 >= 0) && (env->iCallStackSize - 1 < 128));
 	return env->pCallStack[ env->iCallStackSize - 1 ];
 }
 stCoRoutine_t *GetCurrThreadCo( )
