@@ -198,7 +198,6 @@ static int CreateTcpSocket(const unsigned short shPort /* = 0 */,const char *psz
 	return fd;
 }
 
-
 int main(int argc,char *argv[])
 {
 	if(argc<5){
@@ -257,4 +256,4 @@ int main(int argc,char *argv[])
 	if(!deamonize) wait(NULL);
 	return 0;
 }
-
+/* ./example_echosvr 127.0.0.1 10000 100 50 */
