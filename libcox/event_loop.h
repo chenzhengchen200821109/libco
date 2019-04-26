@@ -28,6 +28,11 @@ typedef int (*pEventFunc)(void *);
 		        co_eventloop(ctx, func_, arg_);
 	        }
 
+            void RunInLoop(pEventFunc func, void *arg)
+            {
+                //co_create(
+            }
+
             // Stop the event loop
             //void Stop();
 
