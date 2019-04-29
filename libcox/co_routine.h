@@ -1,6 +1,7 @@
 #ifndef __CO_ROUTINE_H__
 #define __CO_ROUTINE_H__
 
+#include <sys/socket.h>
 #include <stdint.h>
 #include <sys/poll.h>
 #include <pthread.h>
@@ -43,6 +44,7 @@ stCoEpoll_t * 	co_get_epoll_ct(); //ct = current thread
 void 	co_enable_hook_sys();  
 void 	co_disable_hook_sys();  
 bool 	co_is_enable_sys_hook();
+int     co_accept(int fd, struct sockaddr *addr, socklen_t *len);
 
 //6.share stack
 stShareStack_t* co_alloc_sharestack(int iCount, int iStackSize);
@@ -50,7 +52,7 @@ stShareStack_t* co_alloc_sharestack(int iCount, int iStackSize);
 //7.log
 void co_log_err( const char *fmt,... );
 
-//8. pid and tid
+//8. process and thread 
 pid_t GetTid();
 pid_t GetTid();
 

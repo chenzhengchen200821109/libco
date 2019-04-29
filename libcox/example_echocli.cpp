@@ -97,7 +97,7 @@ static void *readwrite_routine( void *arg )
 	char buf[ 1024 * 16 ];
 	int fd = -1;
 	int ret = 0;
-	for(;;)
+	for(;;) // this for loop is only used for echo
 	{
 		if ( fd < 0 )
 		{
