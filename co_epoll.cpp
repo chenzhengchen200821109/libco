@@ -26,10 +26,26 @@
 
 /* 
  * 函数epoll_wait()的封装
- * int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout);
+ * int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout); timeout单位是毫秒
  */
 int	co_epoll_wait( int epfd,struct co_epoll_res *events,int maxevents,int timeout )
 {
+	/*
+	 * int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+	 * 
+	 * typedef union epoll_data {
+	 *   void *ptr;
+	 *   int fd;
+	 *   uint32_t u32;
+	 *   uint64_t u64;
+	 * } epoll_data_t;
+	 * struct epoll_event {
+	 * 	 uint32_t events;   // Epoll events
+	 *   epoll_data_t data; // User data variable
+	 * };
+	 * The data of each returned structure will contain the same data the user set  with an	epoll_ctl(2) (EPOLL_CTL_ADD, EPOLL_CTL_MOD) 
+	 * while the events member will contain the returned event bit field.
+	 */
 	return epoll_wait( epfd,events->events,maxevents,timeout );
 }
 

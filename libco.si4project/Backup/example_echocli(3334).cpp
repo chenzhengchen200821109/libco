@@ -97,15 +97,14 @@ static void *readwrite_routine( void *arg )
 	char buf[ 1024 * 16 ];
 	int fd = -1;
 	int ret = 0;
-	for(;;) // this for loop is only used for echo
+	for(;;)
 	{
 		if ( fd < 0 )
 		{
 			fd = socket(PF_INET, SOCK_STREAM, 0);
 			struct sockaddr_in addr;
 			SetAddr(endpoint->ip, endpoint->port, addr);
-			// 每个协程产生一个连接
-			ret = connect(fd,(struct sockaddr*)&addr,sizeof(addr)); //切换出去
+			ret = connect(fd,(struct sockaddr*)&addr,sizeof(addr));
 
 			// EALREADY -- The socket is nonblocking and a previous connection attempt has not yet been completed.
 			// EINPROGRESS -- The socket is nonblocking and the connection cannot be completed immediately.  
@@ -119,7 +118,7 @@ static void *readwrite_routine( void *arg )
 				struct pollfd pf = { 0 };
 				pf.fd = fd;
 				pf.events = (POLLOUT|POLLERR|POLLHUP);
-				co_poll( co_get_epoll_ct(),&pf,1,200); //切换出去
+				co_poll( co_get_epoll_ct(),&pf,1,200); 
 				//check connect
 				int error = 0;
 				uint32_t socklen = sizeof(error);

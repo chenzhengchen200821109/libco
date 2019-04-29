@@ -132,7 +132,7 @@ static void *poll_routine( void *arg )
 	size_t iWaitCnt = v.size();
 	for(;;)
 	{
-		int ret = poll( pf,iWaitCnt,1000 ); // 发生阻塞，休眠1s
+		int ret = poll( pf,iWaitCnt,1000 );
 		printf("co %p poll wait %ld ret %d\n",
 				co_self(),iWaitCnt,ret);
 		for(int i=0;i<ret;i++)
@@ -149,16 +149,13 @@ static void *poll_routine( void *arg )
 		}
 		if( setRaiseFds.size() == v.size())
 		{
-			// 所有的任务成功建立了连接，退出目前协程
 			break;
 		}
 		if( ret <= 0 )
 		{
-			// poll()函数发生错误，直接退出目前协程
 			break;
 		}
 
-		// 统计
 		iWaitCnt = 0;
 		for(size_t i=0;i<v.size();i++)
 		{
@@ -171,7 +168,7 @@ static void *poll_routine( void *arg )
 		}
 	}
 
-	// 关闭连接
+	// 关闭描述符
 	for(size_t i=0;i<v.size();i++)
 	{
 		close( v[i].fd );
@@ -203,7 +200,7 @@ int main(int argc,char *argv[])
 	{
 		stCoRoutine_t *co = 0;
 		vector<task_t> *v2 = new vector<task_t>();
-		*v2 = v; // 每个协程会建立总任务个数的连接
+		*v2 = v;
 		co_create( &co,NULL,poll_routine,v2 );
 		printf("routine i %d\n",i);
 		co_resume( co );
