@@ -574,6 +574,10 @@ ssize_t recv( int socket, void *buffer, size_t length, int flags )
 
 extern int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeout, poll_pfn_t pollfunc);
 
+/* 
+ * example usage:
+ *              poll(NULL, 0, 25000); /* 发生协程切换使调用协程休眠25s */
+ */
 int poll(struct pollfd fds[], nfds_t nfds, int timeout)
 {
 

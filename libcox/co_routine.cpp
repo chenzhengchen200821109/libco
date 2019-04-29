@@ -797,7 +797,8 @@ void co_eventloop( stCoEpoll_t *ctx,pfn_co_eventloop_t pfn,void *arg )
 
 	for(;;)
 	{
-		int ret = co_epoll_wait( ctx->iEpollFd,result,stCoEpoll_t::_EPOLL_SIZE, 1 ); // timeout为1毫秒
+		// co_eventloop一般会最后调用，所以此时应该在其他协程里添加了event
+		int ret = co_epoll_wait( ctx->iEpollFd,result,stCoEpoll_t::_EPOLL_SIZE, 1 ); // timeout为1毫秒，_POLL_SIZE = 1024 * 10
 
 		stTimeoutItemLink_t *active = (ctx->pstActiveList);
 		stTimeoutItemLink_t *timeout = (ctx->pstTimeoutList);
@@ -858,7 +859,7 @@ void co_eventloop( stCoEpoll_t *ctx,pfn_co_eventloop_t pfn,void *arg )
 		}
 		if( pfn )
 		{
-			if( -1 == pfn( arg ) )
+			if( -1 == pfn( arg ) ) // 当pfn(arg)返回-1时要退出loop
 			{
 				break;
 			}
@@ -913,22 +914,37 @@ stCoRoutine_t *GetCurrThreadCo( )
 	return GetCurrCo(env);
 }
 
-
+// poll()函数的回调函数
 typedef int (*poll_pfn_t)(struct pollfd fds[], nfds_t nfds, int timeout);
+// 
 int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeout, poll_pfn_t pollfunc)
 {
     if (timeout == 0)
 	{
-		return pollfunc(fds, nfds, timeout); // timeout = 0表示立即返回
+		if (pollfunc)
+			return pollfunc(fds, nfds, timeout); // timeout = 0表示立即返回
+		else
+			return 0;
 	}
 	if (timeout < 0)
 	{
 		timeout = INT_MAX;
 	}
-	int epfd = ctx->iEpollFd;
-	stCoRoutine_t* self = co_self(); // self有什么用呢？
+	int epfd = ctx->iEpollFd; // epoll fd
+	//stCoRoutine_t* self = co_self(); // self有什么用呢？
 
 	//1.struct change
+	/*
+	 * struct stPoll_t : public stTimeoutItem_t 
+	 * {
+	 *   struct pollfd *fds;
+	 *   nfds_t nfds; // typedef unsigned long int nfds_t;
+	 *   stPollItem_t *pPollItems;
+	 *   int iAllEventDetach;
+	 *   int iEpollFd;
+	 *   int iRaiseCnt;
+     * };
+     */
 	stPoll_t& arg = *((stPoll_t*)malloc(sizeof(stPoll_t)));
 	memset( &arg,0,sizeof(arg) );
 
@@ -943,6 +959,14 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 	}	
 	else
 	{
+		/*
+		 * struct stPollItem_t : public stTimeoutItem_t
+		 * {
+		 *   struct pollfd *pSelf;
+	     *   stPoll_t *pPoll;
+	     *   struct epoll_event stEvent; // epoll
+         * };
+         */
 		arg.pPollItems = (stPollItem_t*)malloc( nfds * sizeof( stPollItem_t ) );
 	}
 	memset( arg.pPollItems,0,nfds * sizeof(stPollItem_t) );
@@ -956,17 +980,16 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 	{
 		arg.pPollItems[i].pSelf = arg.fds + i;
 		arg.pPollItems[i].pPoll = &arg;
-
 		arg.pPollItems[i].pfnPrepare = OnPollPreparePfn;
 		struct epoll_event &ev = arg.pPollItems[i].stEvent;
 
 		if( fds[i].fd > -1 )
 		{
 			ev.data.ptr = arg.pPollItems + i;
-			ev.events = PollEvent2Epoll( fds[i].events );
+			ev.events = PollEvent2Epoll( fds[i].events ); // convert poll event to epoll event
 
 			int ret = co_epoll_ctl( epfd,EPOLL_CTL_ADD, fds[i].fd, &ev );
-			if (ret < 0 && errno == EPERM && nfds == 1 && pollfunc != NULL)
+			if (ret < 0 && errno == EPERM && nfds == 1 && pollfunc != NULL) // EPERM means the target file fd does not support epoll.
 			{
 				if( arg.pPollItems != arr )
 				{
@@ -1001,9 +1024,9 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 		iRaiseCnt = arg.iRaiseCnt; // OnPollPreparePfn()函数
 	}
 
-	// 协程切换回来
+	// 时间到期时协程切换回来
     {
-		//clear epoll status and memory
+		//clear epoll status and memory 删除节点
 		RemoveFromLink<stTimeoutItem_t,stTimeoutItemLink_t>( &arg );
 		for(nfds_t i = 0;i < nfds;i++)
 		{
@@ -1012,7 +1035,7 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 			{
 				co_epoll_ctl( epfd,EPOLL_CTL_DEL,fd,&arg.pPollItems[i].stEvent );
 			}
-			fds[i].revents = arg.fds[i].revents;
+			fds[i].revents = arg.fds[i].revents; // returned events
 		}
 
 
@@ -1029,7 +1052,7 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 	return iRaiseCnt;
 }
 
-/* 异步poll函数 */
+/* 异步poll函数 -- 调用此函数会发生协程切换*/
 int	co_poll( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeout_ms )
 {
 	return co_poll_inner(ctx, fds, nfds, timeout_ms, NULL);
