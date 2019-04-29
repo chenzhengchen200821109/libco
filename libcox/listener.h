@@ -37,11 +37,7 @@ static void SetAddr(const char *pszIP,const unsigned short shPort,struct sockadd
 class Listener 
 {
     public:
-        typedef std::function <
-            void(int sockfd,const 
-            std::string& /*remote address with format "ip:port"*/,
-            const struct sockaddr_in* /*remote address*/) >
-        NewConnectionCallback;
+        typedef std::function <void(int fd, char *buf, len)> OnConnectionCallback;
         /* local listening address : IP:Port */
         Listener(EventLoop* loop, const std::string& addr) 
             : loop_(loop), addr_(addr)
@@ -107,7 +103,7 @@ class Listener
         //void Stop();
 
         // 
-        void SetNewConnectionCallback(NewConnectionCallback cb) 
+        void SetOnConnectionCallback(OnConnectionCallback cb) 
         {
             new_conn_fn_ = cb;
         }
@@ -118,13 +114,17 @@ class Listener
         {
             return fd_;
         }
+        OnConnectionCallback GetOnConnectionCallback() const
+        {
+            return on_conn_fn_;
+        }
         int fd_ = -1;// The listening socket fd
         EventLoop* loop_;
         //Coroutine *accept_co;
         struct stCoRoutine_t *accept_co;
         std::string addr_;
         //std::unique_ptr<FdChannel> chan_;
-        NewConnectionCallback new_conn_fn_;
+        OnConnectionCallback on_conn_fn_;
 };
 
 extern int co_accept(int fd, struct sockaddr *addr, socklen_t *len);
@@ -137,22 +137,23 @@ extern stack<task_t *> g_readwrite;
 
 void* Listener::HandleAccept(void *arg)
 {
+    Listener::OnConnectionCallback callback;
     Listener *listener = (Listener *)arg; 
-    int g_listen_fd = listener->GetFd();
-    printf("accept_routine\n");
-    fflush(stdout);
+    int fd = listener->GetFd();
+    //printf("accept_routine\n");
+    //fflush(stdout);
 
     // ??????
     for ( ; ; ) {
         //printf("pid %ld g_readwrite.size %ld\n",getpid(),g_readwrite.size());
-		if( g_readwrite.empty() ) {
-			printf("empty\n"); //sleep
-			struct pollfd pf = { 0 };
-			pf.fd = -1;
+		//if( g_readwrite.empty() ) {
+		//	printf("empty\n"); //sleep
+		//	struct pollfd pf = { 0 };
+		//	pf.fd = -1;
             // poll 
-			poll( &pf,1,1000); //切换出去
-			continue;
-		}
+		//	poll( &pf,1,1000); //切换出去
+		//	continue;
+		//}
 		struct sockaddr_in addr; //maybe sockaddr_un;
 		memset( &addr,0,sizeof(addr) );
 		socklen_t len = sizeof(addr);
@@ -166,17 +167,20 @@ void* Listener::HandleAccept(void *arg)
 			co_poll( co_get_epoll_ct(),&pf,1,1000 );
 			continue;
 		}
-        // connection established
-        //new_conn_fn_(); 
-		if( g_readwrite.empty() ) { // readwrite_routine协程还未准备好
-			close( fd );
-			continue;
-		}
+        // call NewConnectionCallback when connection established
+        callback = listener->GetNewConnectionCallback(); 
+        // ?????
+        callback(fd, );
+        break;
+		//if( g_readwrite.empty() ) { // readwrite_routine协程还未准备好
+		//	close( fd );
+		//	continue;
+		//}
 		//SetNonBlockingSocket( fd ); // fd现在是connected fd啦
-		task_t *co = g_readwrite.top();
-		co->fd = fd;
-		g_readwrite.pop();
-		co_resume( co->co ); // 执行readwrtie_routine协程
+		//task_t *co = g_readwrite.top();
+		//co->fd = fd;
+		//g_readwrite.pop();
+		//co_resume( co->co ); // 执行readwrtie_routine协程
     }
     return NULL;
 }
