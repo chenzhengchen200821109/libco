@@ -3,9 +3,11 @@
 
 #include "co_routine.h"
 #include "co_routine_inner.h"
+#include "inner_pre.h"
 #include <stdlib.h>
 #include <functional>
 #include <stack>
+#include <vector>
 
 typedef int (*pEventFunc)(void *);
 
@@ -28,35 +30,23 @@ typedef int (*pEventFunc)(void *);
 
             // Run the IO Event driving loop forever
             // It MUST be called in the IO Event thread
-            void Run()
-	        {
-		        co_eventloop(ctx, func_, arg_);
-	        }
+            void Run();
 
-            void RunInLoop(const Functor& functor)
+            void RunInLoop(const Functor& functor);
+
+            void QueueInLoop(struct stCoRoutine_t* coroutine);
+
+            const pid_t tid() const;
+
+            bool IsInLoopThread() const;
+
+            void SetAddr(struct sockaddr_in raddr)
             {
-                if (IsInLoopThread()) {
-                    functors_.push(functor); 
-                    struct stCoRoutine_t *co = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
-                    co_create(&co, NULL, HandleRunInLoop, this);
-                } else {
-                    QueueInLoop(functor);
-                }
+                raddr_ = raddr;
             }
-
-            void QueueInLoop(const Functor& functor)
+            struct sockaddr_in GetAddr() const
             {
-                functors_.push(functor);
-            }
-
-            const pid_t tid() const
-            {
-                return tid_;
-            }
-
-            bool IsInLoopThread() const
-            {
-                return tid_ == GetTid();
+                return raddr_;
             }
 
             // Stop the event loop
@@ -70,37 +60,16 @@ typedef int (*pEventFunc)(void *);
             // RunEvery executes Functor f every period interval time.
             //void RunEvery(Duration interval, const Functor& f);
         private:
-            static void* HandleRunInLoop(void *arg)
-            {
-                EventLoop::Functor func;
-                EventLoop *loop = (EventLoop *)arg;
-                
-                for ( ; ; ) {
-                    func = loop->GetNextFunctor();
-                    if (!func)
-                       co_yield_ct();
-                    else 
-                        func(); 
-                }
-
-            }
-            Functor GetNextFunctor()
-            {
-                Functor func;
-                if (functors_.empty())
-                    return func;
-                else {
-                    func = functors_.top();
-                    functors_.pop();
-                    return func;
-                }
-            }
+            static void* HandleRunInLoop(void *arg);
+            Functor GetNextFunctor();
 
         private:
             pEventFunc func_;
             struct stCoEpoll_t *ctx;
             void *arg_;
             std::stack<EventLoop::Functor> functors_;
+            std::vector<struct stCoRoutine_t *> coroutines_;
+            struct sockaddr_in raddr_;
             pid_t tid_;
 
     };
