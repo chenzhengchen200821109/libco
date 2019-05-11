@@ -6,21 +6,37 @@
 // It MUST be called in the IO Event thread
 void EventLoop::Run()
 {
+    status_.store(kRunning);
     for (size_t i = 0; i < coroutines_.size(); i++) {
         co_resume(coroutines_[i]);
     }
-	co_eventloop(ctx, func_, arg_);
+	co_eventloop(ctx, HandleEventLoop, this);
 }
 
-void EventLoop::RunInLoop(const Functor& functor)
+void EventLoop::Stop()
 {
-    if (IsInLoopThread()) {
-        functors_.push(functor); 
-        struct stCoRoutine_t *co = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
-        co_create(&co, NULL, HandleRunInLoop, this);
-        co_resume(co);
-    } 
+    status_.store(kStopped);
 }
+
+void EventLoop::RunAfter(int seconds, pFunc f) 
+{
+    struct stCoRoutine_t *co = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+    struct Argument *arg = (struct Argument *)malloc(sizeof(struct Argument));
+    arg->seconds = seconds;
+    arg->func = f;
+    ::co_create(&co, NULL, HandleRunAfter, arg);
+    QueueInLoop(co);
+} 
+
+void EventLoop::RunEvery(int seconds, pFunc f) 
+{
+    struct stCoRoutine_t *co = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+    struct Argument *arg = (struct Argument *)malloc(sizeof(struct Argument));
+    arg->seconds = seconds;
+    arg->func = f;
+    ::co_create(&co, NULL, HandleRunEvery, arg);
+    QueueInLoop(co);
+} 
 
 void EventLoop::QueueInLoop(struct stCoRoutine_t *co)
 {
@@ -37,40 +53,36 @@ bool EventLoop::IsInLoopThread() const
     return tid_ == GetTid();
 }
 
-// Stop the event loop
-//void Stop();
-
-// Reinitialize some data fields after a fork
-// void AfterFork();
-
-//void RunAfter(double delay_ms, const Functor& f);
-
-// RunEvery executes Functor f every period interval time.
-//void RunEvery(Duration interval, const Functor& f);
-void* EventLoop::HandleRunInLoop(void *arg)
+int EventLoop::HandleEventLoop(void *loop)
 {
-    EventLoop::Functor func;
-    EventLoop *loop = (EventLoop *)arg;
-                
+    EventLoop *lp = (EventLoop *)loop;
+    if (lp->IsStopped())
+        return -1;
+    else 
+        return 0;
+}
+
+void* EventLoop::HandleRunAfter(void *arg)
+{
+    struct Argument *argument = (struct Argument *)arg;
+    int seconds = argument->seconds;
+    pFunc func = argument->func;
+    free(argument);
+
+    poll(NULL, 0, seconds * 1000);
+    func();
+    return 0;
+}
+
+void* EventLoop::HandleRunEvery(void *arg)
+{
+    struct Argument *argument = (struct Argument *)arg;
+    int seconds = argument->seconds;
+    pFunc func = argument->func;
+    free(argument);
+
     for ( ; ; ) {
-        func = loop->GetNextFunctor();
-        if (!func)
-            co_yield_ct();
-        else 
-            func(); 
+        poll(NULL, 0, seconds * 1000);
+        func();
     }
 }
-
-EventLoop::Functor EventLoop::GetNextFunctor()
-{
-    Functor func;
-    if (functors_.empty())
-        return func;
-    else {
-        func = functors_.top();
-        functors_.pop();
-        return func;
-    }
-}
-
-
