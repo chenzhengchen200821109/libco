@@ -8,7 +8,7 @@ void EventLoop::Run()
 {
     status_.store(kRunning);
     for (size_t i = 0; i < coroutines_.size(); i++) {
-        co_resume(coroutines_[i]);
+        co_resume(coroutines_[i].get()->coroutine);
     }
 	co_eventloop(ctx, HandleEventLoop, this);
 }
@@ -20,27 +20,27 @@ void EventLoop::Stop()
 
 void EventLoop::RunAfter(int seconds, pFunc f) 
 {
-    struct stCoRoutine_t *co = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+    std::unique_ptr<CoRoutine> PtrCo(new CoRoutine);
     struct Argument *arg = (struct Argument *)malloc(sizeof(struct Argument));
     arg->seconds = seconds;
     arg->func = f;
-    ::co_create(&co, NULL, HandleRunAfter, arg);
-    QueueInLoop(co);
+    ::co_create(&(PtrCo.get()->coroutine), NULL, HandleRunAfter, arg);
+    QueueInLoop(std::move(PtrCo));
 } 
 
 void EventLoop::RunEvery(int seconds, pFunc f) 
 {
-    struct stCoRoutine_t *co = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+    std::unique_ptr<CoRoutine> PtrCo(new CoRoutine);
     struct Argument *arg = (struct Argument *)malloc(sizeof(struct Argument));
     arg->seconds = seconds;
     arg->func = f;
-    ::co_create(&co, NULL, HandleRunEvery, arg);
-    QueueInLoop(co);
+    ::co_create(&(PtrCo.get()->coroutine), NULL, HandleRunEvery, arg);
+    QueueInLoop(std::move(PtrCo));
 } 
 
-void EventLoop::QueueInLoop(struct stCoRoutine_t *co)
+void EventLoop::QueueInLoop(std::unique_ptr<CoRoutine> PtrCo)
 {
-    coroutines_.push_back(co);
+    coroutines_.push_back(std::move(PtrCo));
 }
 
 const pid_t EventLoop::tid() const

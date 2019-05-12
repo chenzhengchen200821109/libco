@@ -8,9 +8,19 @@
 #include <stdio.h>
 #include <time.h>
 
-static int iSuccCnt;
-static int iFailCnt;
+int iSuccCnt;
+int iFailCnt;
+size_t iBytes;
 static int iTime = 0;
+
+static char input_buffer[1024 * 16];
+static char str[1024] = "GET / HTTP/1.1\r\nConnection: keep-alive\r\nUser-Agent: WebBench 1.5\r\nHost: www.baidu.com\r\n\r\n";
+char* output_buffer;
+
+extern int success;
+extern int failed;
+extern size_t bytes;
+static int iConnect;
 
 void AddSuccCnt()
 {
@@ -44,14 +54,17 @@ void AddFailCnt()
 	}
 }
 
-Connector::Connector(EventLoop* loop, const struct stEndPoint* endpoint) 
+Connector::Connector(EventLoop* loop, const char *ip, const unsigned short port) 
     : loop_(loop)
+    , ip_(ip)
+    , port_(port)
 {
     //DLOG_TRACE << "raddr=" << remote_addr_;
     std::cout << "Connector::Connector()" << std::endl;
-    SetAddr(endpoint->ip, endpoint->port, raddr_);
+    PtrCo.reset(new CoRoutine);
     /* create a coroutine */
-    ::co_create(&connect_co, NULL, HandleConnect, loop);
+    //::co_create(&connect_co, NULL, HandleConnect, loop);
+    ::co_create(&(PtrCo.get()->coroutine), NULL, HandleConnect, loop);
 }
 
 Connector::~Connector()
@@ -60,12 +73,19 @@ Connector::~Connector()
     std::cout << "Connector::~Connector()" << std::endl;
 }
 
+void Connector::Connect()
+{
+    SetAddr(ip_, port_, raddr_);
+    loop_->SetAddr(raddr_);
+}
+
 void Connector::Start()
 {
     //DLOG_TRACE << "Try to connect " << remote_addr_ << " status=" << StatusToString();
     std::cout << "Connector::Start()" << std::endl;
-    loop_->SetAddr(raddr_);
-    loop_->QueueInLoop(connect_co);
+    //loop_->SetAddr(raddr_);
+    //loop_->QueueInLoop(connect_co);
+    loop_->QueueInLoop(std::move(PtrCo));
 }
 
 void Connector::SetAddr(const char *pszIP, const unsigned short shPort, struct sockaddr_in& addr)
@@ -88,19 +108,21 @@ void Connector::SetAddr(const char *pszIP, const unsigned short shPort, struct s
 	addr.sin_addr.s_addr = nIP;
 }
 
+extern int timerexpired;
+
 void* Connector::HandleConnect(void *loop)
 {
     co_enable_hook_sys();
     EventLoop *lp = (EventLoop *)loop;
     struct sockaddr_in raddr = lp->GetAddr();
-    char buf[1024 * 16];
-    char str[8] = "sarlmol";
     int fd = -1;
     int ret = 0;
+    size_t rlen = 0;
 
 	for( ; ; ) {
+        printf("iSuccCnt = %d, iFailCnt = %d, iConnect = %d, iBytes = %d\n", iSuccCnt, iFailCnt, iConnect, iBytes);
         if (fd < 0) {
-            fd = CreateNonblockingSocket();
+            fd = socket(AF_INET, SOCK_STREAM, 0);
             ret = connect(fd, (struct sockaddr *)&raddr, sizeof(raddr));
 		    // EALREADY -- The socket is nonblocking and a previous connection attempt has not yet been completed.
 		    // EINPROGRESS -- The socket is nonblocking and the connection cannot be completed immediately.  
@@ -123,33 +145,64 @@ void* Connector::HandleConnect(void *loop)
 			    if (ret == -1) {       
                     close(fd);
                     fd = -1;
-                    AddFailCnt();
+                    iFailCnt++;
                     continue;
 			    }       
 			    if (error) {       
 			        errno = error;
                     close(fd);
                     fd = -1;
-                    AddFailCnt();
+                    iFailCnt++;
                     continue;
 			    }
 		    }
+            iConnect++;
         }
 
-        ret = write(fd, str, 8);
+        rlen = strlen(str);
+        ret = write(fd, str, rlen);
         if (ret > 0) {
-            ret = read(fd, buf, sizeof(buf));
-            if (ret <= 0) {
+            if (ret != rlen) {
+                //wait  
+                struct pollfd pf = { 0 };
+                pf.fd = fd;
+                pf.events = (POLLIN|POLLERR|POLLHUP);
+                co_poll(co_get_epoll_ct(), &pf, 1, 200);
+            }
+tryagain:
+            ret = read(fd, input_buffer, sizeof(input_buffer));
+            if (ret < 0) {
+                perror("read failed");
+                if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                    struct pollfd pf = { 0 };
+                    pf.fd = fd;
+                    pf.events = (POLLIN|POLLERR|POLLHUP);
+                    co_poll(co_get_epoll_ct(), &pf, 1, 200);
+                    goto tryagain;
+                } 
+                else {
+                    close(fd);
+                    fd = -1;
+                    iFailCnt++;
+                }
+            }
+            else if (ret == 0) { //remote peer shutdown
                 close(fd);
                 fd = -1;
-                AddFailCnt();
-            } else {
-                AddSuccCnt();
+            }
+            else {
+                input_buffer[ret] = '\0';
+                printf("%s\n", input_buffer);
+                close(fd);
+                fd = -1;
+                iSuccCnt++;
+                iBytes += ret;
             }
         } else {
+            perror("write failed");
             close(fd);
             fd = -1;
-            AddFailCnt();
+            iFailCnt++;
         }
 	}
     return 0;

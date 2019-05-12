@@ -9,6 +9,7 @@
 #include <functional>
 #include <stack>
 #include <vector>
+#include "coroutine.h"
 
 
 class EventLoop : public ServerStatus 
@@ -16,6 +17,7 @@ class EventLoop : public ServerStatus
     public:
         typedef void (*pFunc)(void);
     public:
+        typedef std::function<void()> Functor;
 	    EventLoop() 
             : ctx(co_get_epoll_ct())
     	{
@@ -40,7 +42,7 @@ class EventLoop : public ServerStatus
         void RunAfter(int seconds, pFunc f);
         void RunEvery(int seconds, pFunc f);
 
-        void QueueInLoop(struct stCoRoutine_t* coroutine);
+        void QueueInLoop(std::unique_ptr<CoRoutine> PtrCo);
 
         const pid_t tid() const;
 
@@ -65,10 +67,9 @@ private:
     static void *HandleRunEvery(void *);
 private:
     struct stCoEpoll_t *ctx;
-    std::vector<struct stCoRoutine_t *> coroutines_;
+    std::vector<std::unique_ptr<CoRoutine> > coroutines_;
     struct sockaddr_in raddr_;
     pid_t tid_;
-
 };
 
 #endif 
