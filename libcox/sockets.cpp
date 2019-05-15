@@ -32,7 +32,7 @@ int SetNonBlockingSocket(int fd)
 		return -1;
 	}
 	if (!(flags & O_NONBLOCK)) {
-		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK | O_NDELAY) == -1) {
 			return -1;
 		}
 	}
