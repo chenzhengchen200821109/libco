@@ -18,6 +18,7 @@
 #include <resolv.h>
 #include <netdb.h>
 #include <time.h>
+#include <sys/uio.h>
 #include "co_routine.h"
 #include "co_routine_inner.h"
 
@@ -41,6 +42,10 @@ typedef int (*close_pfn_t)(int fd);
 
 typedef ssize_t (*read_pfn_t)(int fildes, void *buf, size_t nbyte);
 typedef ssize_t (*write_pfn_t)(int fildes, const void *buf, size_t nbyte);
+
+//add by chenzheng
+typedef ssize_t (*readv_pfn_t)(int fildes, const struct iovec* iov, int iovcnt);
+typedef ssize_t (*writev_pfn_t)(int fildes, const struct iovec* iov, int iovcnt);
 
 typedef ssize_t (*sendto_pfn_t)(int socket, const void *message, size_t length,
 	                 int flags, const struct sockaddr *dest_addr,
@@ -69,6 +74,10 @@ static close_pfn_t g_sys_close_func 	= (close_pfn_t)dlsym(RTLD_NEXT,"close");
 
 static read_pfn_t g_sys_read_func 		= (read_pfn_t)dlsym(RTLD_NEXT,"read");
 static write_pfn_t g_sys_write_func 	= (write_pfn_t)dlsym(RTLD_NEXT,"write");
+
+//add by chenzheng
+static readv_pfn_t g_sys_readv_func     = (readv_pfn_t)dlsym(RTLD_NEXT,"readv");
+static writev_pfn_t g_sys_writev_func   = (writev_pfn_t)dlsym(RTLD_NEXT, "writev");
 
 static sendto_pfn_t g_sys_sendto_func 	= (sendto_pfn_t)dlsym(RTLD_NEXT,"sendto");
 static recvfrom_pfn_t g_sys_recvfrom_func = (recvfrom_pfn_t)dlsym(RTLD_NEXT,"recvfrom");
@@ -305,6 +314,43 @@ ssize_t read( int fd, void *buf, size_t nbyte )
 	return readret;
 	
 }
+
+//add by chenzheng
+ssize_t readv( int fd, const struct iovec *iov, int iovcnt )
+{
+	HOOK_SYS_FUNC( readv );
+	
+	if( !co_is_enable_sys_hook() )
+	{
+		return g_sys_readv_func( fd,iov,iovcnt );
+	}
+	rpchook_t *lp = get_by_fd( fd );
+
+	if( !lp || ( O_NONBLOCK & lp->user_flag ) ) 
+	{
+		ssize_t ret = g_sys_readv_func( fd,iov,iovcnt );
+		return ret;
+	}
+	int timeout = ( lp->read_timeout.tv_sec * 1000 ) 
+				+ ( lp->read_timeout.tv_usec / 1000 );
+
+	struct pollfd pf = { 0 };
+	pf.fd = fd;
+	pf.events = ( POLLIN | POLLERR | POLLHUP );
+
+	int pollret = poll( &pf,1,timeout );
+
+	ssize_t readret = g_sys_readv_func( fd,iov,iovcnt );
+
+	if( readret < 0 )
+	{
+		co_log_err("CO_ERR: read fd %d ret %ld errno %d poll ret %d timeout %d",
+					fd,readret,errno,pollret,timeout);
+	}
+
+	return readret;
+	
+}
 ssize_t write( int fd, const void *buf, size_t nbyte )
 {
 	HOOK_SYS_FUNC( write );
@@ -355,6 +401,77 @@ ssize_t write( int fd, const void *buf, size_t nbyte )
 	{
 		return writeret;
 	}
+	return wrotelen;
+}
+
+ssize_t writev( int fd, const struct iovec *iov, int iovcnt )
+{
+	HOOK_SYS_FUNC( writev );
+
+    size_t nbyte = 0;
+    size_t len = 0;
+    for (int i = 0; i < iovcnt; i++) 
+    {
+        nbyte += iov[i].iov_len;
+    }
+
+    //use write system call ?????
+    void *buf = calloc(1, nbyte);
+    for (int i = 0; i < iovcnt; i++)
+    {
+        memcpy((char *)buf + len, iov[i].iov_base, iov[i].iov_len);
+        len = iov[i].iov_len;
+    }
+
+	if( !co_is_enable_sys_hook() )
+	{
+		return g_sys_writev_func( fd,iov,iovcnt );
+	}
+	rpchook_t *lp = get_by_fd( fd );
+
+	if( !lp || ( O_NONBLOCK & lp->user_flag ) )
+	{
+		ssize_t ret = g_sys_writev_func( fd,iov,iovcnt );
+		return ret;
+	}
+	size_t wrotelen = 0;
+	int timeout = ( lp->write_timeout.tv_sec * 1000 ) 
+				+ ( lp->write_timeout.tv_usec / 1000 );
+
+	ssize_t writeret = g_sys_write_func( fd,(const char *)buf + wrotelen,nbyte - wrotelen );
+
+	if (writeret == 0)
+	{
+        free(buf);
+		return writeret;
+	}
+
+	if( writeret > 0 )
+	{
+		wrotelen += writeret;	
+	}
+	while( wrotelen < nbyte )
+	{
+
+		struct pollfd pf = { 0 };
+		pf.fd = fd;
+		pf.events = ( POLLOUT | POLLERR | POLLHUP );
+		poll( &pf,1,timeout );
+
+		writeret = g_sys_write_func( fd,(const char*)buf + wrotelen,nbyte - wrotelen );
+		
+		if( writeret <= 0 )
+		{
+			break;
+		}
+		wrotelen += writeret ;
+	}
+	if (writeret <= 0 && wrotelen == 0)
+	{
+        free(buf);
+		return writeret;
+	}
+    free(buf);
 	return wrotelen;
 }
 

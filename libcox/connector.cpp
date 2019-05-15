@@ -172,7 +172,7 @@ void* Connector::HandleConnect(void *loop)
 tryagain:
             ret = read(fd, input_buffer, sizeof(input_buffer));
             if (ret < 0) {
-                perror("read failed");
+                //perror("read failed");
                 if (errno == EAGAIN || errno == EWOULDBLOCK) {
                     struct pollfd pf = { 0 };
                     pf.fd = fd;
@@ -199,7 +199,7 @@ tryagain:
                 iBytes += ret;
             }
         } else {
-            perror("write failed");
+            //perror("write failed");
             close(fd);
             fd = -1;
             iFailCnt++;
