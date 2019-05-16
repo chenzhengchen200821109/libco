@@ -17,7 +17,6 @@ class EventLoop : public ServerStatus
     public:
         typedef void (*pFunc)(void);
     public:
-        typedef std::function<void()> Functor;
 	    EventLoop() 
             : ctx(co_get_epoll_ct())
     	{
@@ -62,7 +61,8 @@ class EventLoop : public ServerStatus
             pFunc func;
         };
 private:
-    static int HandleEventLoop(void *);
+    static int HandleEventLoopHelper(void *);
+    int HandleEventLoop(); 
     static void *HandleRunAfter(void *);
     static void *HandleRunEvery(void *);
 private:

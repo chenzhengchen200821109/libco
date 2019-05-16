@@ -10,7 +10,7 @@ void EventLoop::Run()
     for (size_t i = 0; i < coroutines_.size(); i++) {
         co_resume(coroutines_[i].get()->coroutine);
     }
-	co_eventloop(ctx, HandleEventLoop, this);
+	::co_eventloop(ctx, HandleEventLoopHelper, this);
 }
 
 void EventLoop::Stop()
@@ -53,10 +53,20 @@ bool EventLoop::IsInLoopThread() const
     return tid_ == GetTid();
 }
 
-int EventLoop::HandleEventLoop(void *loop)
+int EventLoop::HandleEventLoopHelper(void *loop)
 {
     EventLoop *lp = (EventLoop *)loop;
-    if (lp->IsStopped())
+    return lp->HandleEventLoop();
+    //EventLoop *lp = (EventLoop *)loop;
+    //if (lp->IsStopped())
+    //    return -1;
+    //else 
+    //    return 0;
+}
+
+int EventLoop::HandleEventLoop()
+{
+    if (IsStopped())
         return -1;
     else 
         return 0;

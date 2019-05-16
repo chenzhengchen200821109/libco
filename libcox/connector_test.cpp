@@ -27,11 +27,12 @@ int main(int argc,char *argv[])
 		} else if( pid < 0 ) {
 			break;
 		}
+        // child process
 		for(int i=0;i<cnt;i++)
 		{
-            Connector conn(&loop, argv[1], atoi(argv[2]));
-            conn.Connect();
-            conn.Start();
+            Connector* conn = new Connector(&loop, argv[1], atoi(argv[2]));
+            //conn->Connect();
+            conn->Start();
 		}
         loop.Run();
 
