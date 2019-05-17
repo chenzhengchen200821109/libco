@@ -1,11 +1,12 @@
-#include "Buffer.h"
+#include "buffer.h"
 #include "co_routine.h"
 #include <errno.h>
+//#include "inner_pre.h"
 //#include <sys/uio.h>
 
 const char Buffer::kCRLF[] = "\r\n";
-const size_t Buffer::kCheapPrepend;
-const size_t Buffer::kInitialSize;
+//const size_t Buffer::kCheapPrepend;
+//const size_t Buffer::kInitialSize;
 
 ssize_t Buffer::readFd(int fd, int* savedErrno)
 {

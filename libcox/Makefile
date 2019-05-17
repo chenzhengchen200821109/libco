@@ -16,5 +16,8 @@ event_loop_test: event_loop_test.cpp
 connector_test: connector_test.cpp
 	g++ -g -std=c++11 -o connector_test connector_test.cpp connector.cpp event_loop.cpp coctx.cpp coctx_swap.S co_epoll.cpp co_hook_sys_call.cpp co_routine.cpp -ldl
 
+tcp_client_test: tcp_client_test.cpp
+	g++ -g -std=c++11 -o tcp_client_test tcp_client_test.cpp connector.cpp event_loop.cpp tcp_client.cpp tcp_conn.cpp buffer.cpp coctx.cpp coctx_swap.S co_epoll.cpp co_hook_sys_call.cpp co_routine.cpp -ldl
+
 clean:
-	rm -rf a.out .*.swp *.gch *.*~ example_thread example_copystack example_echocli example_echosvr event_loop_test connector_test *.o 
+	rm -rf a.out .*.swp *.gch *.*~ example_thread example_copystack example_echocli example_echosvr event_loop_test connector_test tcp_client_test *.o 

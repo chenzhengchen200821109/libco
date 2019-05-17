@@ -4,9 +4,15 @@
 #include "inner_pre.h"
 #include "event_loop.h"
 #include "connector.h"
+#include "tcp_conn.h"
+#include "tcp_callbacks.h"
 #include <vector>
+#include <string>
+#include <queue>
 
 class Connector;
+typedef std::shared_ptr<Connector> ConnectorPtr;
+
 // We can use this class to create a TCP client.
 // The typical usage is :
 //      1. Create a TCPClient object
@@ -19,14 +25,33 @@ class Connector;
 class TCPClient 
 {
     public:
-        TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo);
+        TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo = 100, const string& name = "tcpclient");
         ~TCPClient(); 
         void Start();
+        void setConnectionCallback(const ConnectionCallback& cb)
+        {
+            connectionCallback_ = cb;
+        }
+        void setMessageCallback(const MessageCallback& cb)
+        {
+            messageCallback_ = cb;
+        }
+        void setWriteCompleteCallback(const WriteCompleteCallback& cb)
+        {
+            writeCompleteCallback_ = cb;
+        }
     private: 
-        void Connect();
+        //void Connect();
+        void newConnection(int sockfd);
+    private:
         EventLoop* loop_;
-        Connector connector_;
-        std::vector<Connector> connectors_;
+        const std::string name_;
+        //Connector connector_;
+        ConnectionCallback connectionCallback_;
+        MessageCallback messageCallback_;
+        WriteCompleteCallback writeCompleteCallback_;
+        std::vector<ConnectorPtr> connectors_;
+        std::queue<TCPConnPtr> connections_;
         int NumCo_;
 };
 

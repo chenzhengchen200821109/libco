@@ -74,7 +74,7 @@ void Connector::Connect()
 		    }
         }
         // connect succeed
-        HandleWrite();
+        HandleWrite(fd_);
         close(fd_);
         fd_ = -1;
     }

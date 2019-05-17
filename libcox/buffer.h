@@ -5,11 +5,12 @@
 #include "slice.h"
 #include "types.h"
 #include "endian.h"
+#include "inner_pre.h"
 #include <algorithm>
 #include <vector>
 #include <assert.h>
 #include <string.h>
-//#include <unistd.h>  // ssize_t
+#include <sys/types.h>  // ssize_t
 
 /// A buffer class modeled after org.jboss.netty.buffer.ChannelBuffer
 ///

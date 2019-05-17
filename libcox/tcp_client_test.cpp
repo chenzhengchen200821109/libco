@@ -6,6 +6,17 @@
 #include <unistd.h>
 #include <string>
 
+void onConnection(const TCPConnPtr& conn)
+{
+    conn->Send("world\n");
+}
+
+void onMessage(const TCPConnPtr& conn, Buffer *buf)
+{
+    std::string msg(buf->retrieveAllAsString());
+    conn->Send(msg);
+}
+
 int main(int argc,char *argv[])
 {
 	int proccnt = atoi( argv[4] ); //进程数量
@@ -26,7 +37,9 @@ int main(int argc,char *argv[])
 		} else if( pid < 0 ) {
 			break;
 		}
-        TCPClient cli(&loop, argv[1], atoi(argv[2]), atoi(argv[3]));
+        TCPClient cli(&loop, argv[1], atoi(argv[2]), atoi(argv[3]), "tcpclient");
+        cli.setConnectionCallback(onConnection);
+        cli.setMessageCallback(onMessage);
         cli.Start();
         loop.Run();
 
