@@ -56,6 +56,6 @@ void TCPClient::newConnection(int sockfd)
     conn->SetConnectionCallback(connectionCallback_);
     conn->SetMessageCallback(messageCallback_);
     conn->SetWriteCompleteCallback(writeCompleteCallback_);
-    //conn->setCloseCallback();
+    conn->SetCloseCallback(closeCallback_);
     conn->ConnectEstablished(sockfd);
 }

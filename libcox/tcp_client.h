@@ -40,6 +40,10 @@ class TCPClient
         {
             writeCompleteCallback_ = cb;
         }
+        void setCloseCallback(const CloseCallback& cb)
+        {
+            closeCallback_ = cb;
+        }
     private: 
         //void Connect();
         void newConnection(int sockfd);
@@ -50,6 +54,7 @@ class TCPClient
         ConnectionCallback connectionCallback_;
         MessageCallback messageCallback_;
         WriteCompleteCallback writeCompleteCallback_;
+        CloseCallback closeCallback_;
         std::vector<ConnectorPtr> connectors_;
         std::queue<TCPConnPtr> connections_;
         int NumCo_;

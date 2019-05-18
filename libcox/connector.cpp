@@ -8,6 +8,17 @@
 #include <stdio.h>
 #include <time.h>
 
+static int SetNonBlock(int iSock)
+{
+    int iFlags;
+
+    iFlags = fcntl(iSock, F_GETFL, 0);
+    iFlags |= O_NONBLOCK;
+    iFlags |= O_NDELAY;
+    int ret = fcntl(iSock, F_SETFL, iFlags);
+    return ret;
+}
+
 Connector::Connector(EventLoop* loop, const char *ip, const unsigned short port) 
     : loop_(loop)
     , ip_(ip)
@@ -32,7 +43,7 @@ void Connector::Connect()
 {
     co_enable_hook_sys();
 
-    SetAddr(ip_, port_, raddr_);
+    //SetAddr(ip_, port_, raddr_);
 
     int ret = 0;
     size_t rlen = 0;
@@ -41,6 +52,8 @@ void Connector::Connect()
         //printf("iSuccCnt = %d, iFailCnt = %d, iConnect = %d, iBytes = %d\n", iSuccCnt, iFailCnt, iConnect, iBytes);
         if (fd_ < 0) {
             fd_ = socket(AF_INET, SOCK_STREAM, 0);
+            SetNonBlock(fd_);
+            SetAddr(ip_, port_, raddr_);
             ret = connect(fd_, (struct sockaddr *)&raddr_, sizeof(raddr_));
 		    // EALREADY -- The socket is nonblocking and a previous connection attempt has not yet been completed.
 		    // EINPROGRESS -- The socket is nonblocking and the connection cannot be completed immediately.  
@@ -74,9 +87,8 @@ void Connector::Connect()
 		    }
         }
         // connect succeed
+        assert(fd_ >= 0 && ret == 0);
         HandleWrite(fd_);
-        close(fd_);
-        fd_ = -1;
     }
 
 }

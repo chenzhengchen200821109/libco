@@ -18,13 +18,14 @@ class TCPConn : public std::enable_shared_from_this<TCPConn>
 
         void Close();
 
-        void Send(const char* s) {
-            Send(s, strlen(s));
-        }
+        //void Send(const char* s) 
+        //{
+        //    Send(s, strlen(s));
+        //}
         void Send(const void* data, size_t len);
-	    void Send(const std::string& d); 
-        void Send(const Slice& message);
-        void Send(Buffer* buf);
+	    void Send(const std::string& str); 
+        //void Send(const Slice& message);
+        //void Send(Buffer* buf);
     public:
         int GetFd() const 
         {
@@ -48,6 +49,14 @@ class TCPConn : public std::enable_shared_from_this<TCPConn>
             closeCallback_ = cb;
         }
         void ConnectEstablished(int sockfd);
+        bool IsDisconnected()
+        {
+            return state_ == kDisconnected;
+        }
+        bool IsConnected()
+        {
+            return state_ == kConnected;
+        }
     private:
         void HandleRead(int sockfd);
         void HandleWrite(int sockfd);
@@ -57,10 +66,16 @@ class TCPConn : public std::enable_shared_from_this<TCPConn>
         void SendInLoop(const void* data, size_t len);
         void SendStringInLoop(const std::string& message);
     private:
+        enum State { kDisconnected, kConnected};
+        void SetState(State s)
+        {
+            state_ = s;
+        }
+    private:
         EventLoop* loop_;
         Connector* owner_; // use smart pointer
         int fd_;
-
+        State state_;
         Buffer inputBuffer_;
         Buffer outputBuffer_;
 

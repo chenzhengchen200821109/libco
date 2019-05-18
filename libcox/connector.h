@@ -56,8 +56,10 @@ class Connector
             assert(fd >= 0);
             if (newConnectionCallback_)
                 newConnectionCallback_(fd);
-            else
+            else {
+                fd_ = -1;
                 std::cout << "Connection Established" << std::endl;
+            }
         }
         void SetAddr(const char *, const unsigned short, struct sockaddr_in&);
     private:
