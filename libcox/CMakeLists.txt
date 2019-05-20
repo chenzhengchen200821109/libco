@@ -1,48 +1,38 @@
-cmake_minimum_required(VERSION 2.8)
-project(libco)
+#在linux平台下使用CMake生成Makefile并编译的流程如下：
+#   1.编写CMake配置文件CMakeLists.txt。
+#   2.执行命令cmake PATH或者ccmake PATH生成Makefile.
+#     ccmake 和 cmake 的区别在于前者提供了一个交互式的界面。
+#     其中，PATH是CMakeLists.txt所在的目录。
+#   3.使用 make 命令进行编译。
 
-# This for mac osx only
-set(CMAKE_MACOSX_RPATH 0)
+cmake_minimum_required(VERSION 2.8) 
 
-# Set lib version
-set(LIBCO_VERSION   0.5)
+#项目信息
+project(libcox)
 
-# Set cflags
-set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} -g -fno-strict-aliasing -O2 -Wall -export-dynamic -Wall -pipe  -D_GNU_SOURCE -D_REENTRANT -fPIC -Wno-deprecated -m64)
+# Set lib version 
+set(CLIB_VERSION 0.5)
 
-# Use c and asm
+# Set cflags 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11 -O0 -Wall")
+
+# Use c and asm 
 enable_language(C ASM)
 
-# Add source files
-set(SOURCE_FILES
-        co_epoll.cpp
-        co_hook_sys_call.cpp
-        co_routine.cpp
-        coctx.cpp
-        coctx_swap.S)
+# 添加子目录
+add_subdirectory(lib)
 
-# Add static and shared library target
-add_library(colib_static STATIC ${SOURCE_FILES})
-add_library(colib_shared SHARED ${SOURCE_FILES})
+# include directory
+include_directories(${CMAKE_CURRENT_LIST_DIR}/lib)
 
-# Set library output name
-set_target_properties(colib_static PROPERTIES OUTPUT_NAME colib)
-set_target_properties(colib_shared PROPERTIES OUTPUT_NAME colib)
+# Macro for add test target 
+macro(add_test_target EXAMPLE_TARGET) 
+    # 指定生成目标
+    add_executable("${EXAMPLE_TARGET}" "${EXAMPLE_TARGET}.cpp")
+    # 添加链接库 
+    target_link_libraries("${EXAMPLE_TARGET}" libcox_static pthread dl) 
+endmacro(add_test_target)
 
-set_target_properties(colib_static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-set_target_properties(colib_shared PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-
-# Set shared library version, will generate libcolib.${LIBCO_VERSION}.so and a symbol link named libcolib.so
-# For mac osx, the extension name will be .dylib
-set_target_properties(colib_shared PROPERTIES VERSION ${LIBCO_VERSION} SOVERSION ${LIBCO_VERSION})
-
-
-
-# Macro for add example target
-macro(add_example_target EXAMPLE_TARGET)
-    add_executable("example_${EXAMPLE_TARGET}" "example_${EXAMPLE_TARGET}.cpp")
-    target_link_libraries("example_${EXAMPLE_TARGET}" colib_static pthread dl)
-endmacro(add_example_target)
-
-add_example_target(copystack)
-add_example_target(echocli)
+add_test_target(connector_test) 
+add_test_target(event_loop_test)
+add_test_target(tcp_client_test)

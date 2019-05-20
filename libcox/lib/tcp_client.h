@@ -25,7 +25,7 @@ typedef std::shared_ptr<Connector> ConnectorPtr;
 class TCPClient 
 {
     public:
-        TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo = 100, const string& name = "tcpclient");
+        TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo, const string& name);
         ~TCPClient(); 
         void Start();
         void setConnectionCallback(const ConnectionCallback& cb)
@@ -49,6 +49,7 @@ class TCPClient
         void newConnection(int sockfd);
     private:
         EventLoop* loop_;
+        int NumCo_;
         const std::string name_;
         //Connector connector_;
         ConnectionCallback connectionCallback_;
@@ -57,7 +58,6 @@ class TCPClient
         CloseCallback closeCallback_;
         std::vector<ConnectorPtr> connectors_;
         std::queue<TCPConnPtr> connections_;
-        int NumCo_;
 };
 
 #endif

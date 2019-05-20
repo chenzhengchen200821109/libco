@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <iostream>
 
-TCPClient::TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo, const std::string& name)
+TCPClient::TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo = 100, const std::string& name = "tcpclient")
     : loop_(loop)
     //, connector_(Connector(loop, ip, port))
     , NumCo_(NumCo)

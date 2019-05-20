@@ -43,10 +43,7 @@ void Connector::Connect()
 {
     co_enable_hook_sys();
 
-    //SetAddr(ip_, port_, raddr_);
-
     int ret = 0;
-    size_t rlen = 0;
 
 	for( ; ; ) {
         //printf("iSuccCnt = %d, iFailCnt = %d, iConnect = %d, iBytes = %d\n", iSuccCnt, iFailCnt, iConnect, iBytes);

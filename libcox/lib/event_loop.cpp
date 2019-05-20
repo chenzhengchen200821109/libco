@@ -95,4 +95,5 @@ void* EventLoop::HandleRunEvery(void *arg)
         poll(NULL, 0, seconds * 1000);
         func();
     }
+    return 0;
 }

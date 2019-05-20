@@ -3,8 +3,8 @@
 
 #include "copyable.h"
 #include "slice.h"
-#include "types.h"
-#include "endian.h"
+#include "sys_types.h"
+#include "sys_endian.h"
 #include "inner_pre.h"
 #include <algorithm>
 #include <vector>

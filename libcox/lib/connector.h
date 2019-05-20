@@ -49,6 +49,7 @@ class Connector
         {
             Connector *conn = (Connector *)arg;
             conn->Connect();
+            return 0;
         }
         void Connect();
         void HandleWrite(int fd)
