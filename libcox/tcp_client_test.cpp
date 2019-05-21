@@ -6,24 +6,20 @@
 #include <unistd.h>
 #include <string>
 
-static int id = 0;
-
 void onConnection(const TCPConnPtr& conn)
 {
     conn->Send("world\n");
-    //id++;
 }
 
 void onMessage(const TCPConnPtr& conn, Buffer *buf)
 {
     std::string msg(buf->retrieveAllAsString());
-    //msg += std::to_string(id);
     conn->Send(msg);
-    //id++;
 }
 
 int main(int argc,char *argv[])
 {
+    google::InitGoogleLogging(argv[0]);
 	int proccnt = atoi( argv[4] ); //进程数量
 
 	// 为什么要忽略SIGPIPE信号？

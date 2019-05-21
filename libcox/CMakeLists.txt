@@ -30,9 +30,10 @@ macro(add_test_target EXAMPLE_TARGET)
     # 指定生成目标
     add_executable("${EXAMPLE_TARGET}" "${EXAMPLE_TARGET}.cpp")
     # 添加链接库 
-    target_link_libraries("${EXAMPLE_TARGET}" libcox_static pthread dl) 
+    target_link_libraries("${EXAMPLE_TARGET}" libcox_static pthread dl glog) 
 endmacro(add_test_target)
 
 add_test_target(connector_test) 
 add_test_target(event_loop_test)
 add_test_target(tcp_client_test)
+add_test_target(tcp_server_test)

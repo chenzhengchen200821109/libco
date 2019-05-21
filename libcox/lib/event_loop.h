@@ -20,6 +20,7 @@ class EventLoop : public ServerStatus
 	    EventLoop() 
             : ctx(co_get_epoll_ct())
     	{
+            DLOG_TRACE;
             tid_ = GetTid(); 
         }
 
@@ -29,6 +30,7 @@ class EventLoop : public ServerStatus
         //explicit EventLoop(struct event_base);
         ~EventLoop()
         {
+            DLOG_TRACE;
             //release coroutine 
         }
 
@@ -43,6 +45,11 @@ class EventLoop : public ServerStatus
 
         void QueueInLoop(std::unique_ptr<CoRoutine> PtrCo);
 
+        void QueueInLoop(struct CoRoutine* co)
+        {
+            scoroutines_.push_back(co);
+        }
+
         const pid_t tid() const;
 
         bool IsInLoopThread() const;
@@ -55,6 +62,22 @@ class EventLoop : public ServerStatus
         {
             return raddr_;
         }
+        //void Push(CoRoutine * co)
+        //{
+        //    pool_.push(co);
+        //}
+        //void Pop()
+        //{
+        //    pool_.pop();
+        //}
+        //CoRoutine* Top()
+        //{
+        //    pool_.top();
+        //}
+        //bool IsEmpty() const
+        //{
+        //    return pool_.empty();
+        //}
         struct Argument
         {
             int seconds;
@@ -67,9 +90,11 @@ private:
     static void *HandleRunEvery(void *);
 private:
     struct stCoEpoll_t *ctx;
-    std::vector<std::unique_ptr<CoRoutine> > coroutines_;
+    std::vector<std::unique_ptr<CoRoutine> > coroutines_; // for tcp clients
+    std::vector<struct CoRoutine *> scoroutines_; // for tcp server
     struct sockaddr_in raddr_;
     pid_t tid_;
+    //std::stack<CoRoutine *> pool_; // for tcp server
 };
 
 #endif 

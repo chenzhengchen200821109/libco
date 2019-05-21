@@ -25,28 +25,27 @@ Connector::Connector(EventLoop* loop, const char *ip, const unsigned short port)
     , port_(port)
     , fd_(-1)
 {
-    //DLOG_TRACE << "raddr=" << remote_addr_;
+    DLOG_TRACE << "raddr=" << ip_ << " port=" << port_;
     std::cout << "Connector::Connector()" << std::endl;
     PtrCo.reset(new CoRoutine);
     /* create a coroutine */
-    //::co_create(&(PtrCo.get()->coroutine), NULL, HandleConnect, loop);
     ::co_create(&(PtrCo.get()->coroutine), NULL, HandleConnect, this);
 }
 
 Connector::~Connector()
 {
-    //DLOG_TRACE;
+    DLOG_TRACE;
     std::cout << "Connector::~Connector()" << std::endl;
 }
 
 void Connector::Connect()
 {
+    DLOG_TRACE << "Try to connect " << ip_;
     co_enable_hook_sys();
 
     int ret = 0;
 
 	for( ; ; ) {
-        //printf("iSuccCnt = %d, iFailCnt = %d, iConnect = %d, iBytes = %d\n", iSuccCnt, iFailCnt, iConnect, iBytes);
         if (fd_ < 0) {
             fd_ = socket(AF_INET, SOCK_STREAM, 0);
             SetNonBlock(fd_);
@@ -70,13 +69,15 @@ void Connector::Connect()
 			    uint32_t socklen = sizeof(error);
 			    errno = 0;
 			    ret = getsockopt(fd_, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen);
-			    if (ret == -1) {       
+			    if (ret == -1) {
+                    LOG_ERROR << "getsockopt failed, errno=" << errno << " " << strerror(errno);       
                     close(fd_);
                     fd_ = -1;
                     continue;
 			    }       
 			    if (error) {       
 			        errno = error;
+                    LOG_ERROR << "connect failed, errno=" << errno << " " << strerror(errno);
                     close(fd_);
                     fd_ = -1;
                     continue;
@@ -84,7 +85,9 @@ void Connector::Connect()
 		    }
         }
         // connect succeed
-        assert(fd_ >= 0 && ret == 0);
+        CHECK(fd_ >= 0) << "Invalid fd";
+        CHECK_EQ(ret, 0) << "connect failed";
+        //assert(fd_ >= 0 && ret == 0);
         HandleWrite(fd_);
     }
 
@@ -92,8 +95,7 @@ void Connector::Connect()
 
 void Connector::Start()
 {
-    //DLOG_TRACE << "Try to connect " << remote_addr_ << " status=" << StatusToString();
-    std::cout << "Connector::Start()" << std::endl;
+    DLOG_TRACE;
     loop_->QueueInLoop(std::move(PtrCo));
 }
 

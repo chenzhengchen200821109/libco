@@ -4,10 +4,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -g -O0 -std=c++11 -Wall -fPIC")
 # Add source files 
 set(SOURCE_FILES buffer.cpp
                  connector.cpp
+                 listener.cpp
                  event_loop.cpp
                  inner_pre.cpp
                  sockets.cpp
                  tcp_client.cpp
+                 tcp_server.cpp 
                  tcp_conn.cpp
                  coctx.cpp
                  coctx_swap.S

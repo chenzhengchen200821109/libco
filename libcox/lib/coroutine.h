@@ -10,12 +10,15 @@ class CoRoutine
         CoRoutine()    
         {              
             coroutine = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+	    fd = -1;
         }              
         ~CoRoutine()   
-        {              
+        {
+	    fd = -1;              
             free(coroutine);
         }              
         struct stCoRoutine_t *coroutine;
+	int fd;
 };
 
 #endif

@@ -3,10 +3,10 @@
 #include <iostream>
 #include <memory>
 #include <functional>
-
 #include "sys_addrinfo.h"
 #include "sys_sockets.h"
 #include "sockets.h"
+#include "logging.h"
 
 //int EventAdd(struct event* ev, const struct timeval* timeout);
 //int EventDel(struct event*);

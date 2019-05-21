@@ -8,6 +8,7 @@
 
 int main(int argc,char *argv[])
 {
+    google::InitGoogleLogging(argv[0]);
 	int cnt = atoi( argv[3] ); //协程数量
 	int proccnt = atoi( argv[4] ); //进程数量
 
