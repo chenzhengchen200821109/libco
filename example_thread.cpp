@@ -26,10 +26,11 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 int loop(void *)
 {
-	printf("I am a loop\n");
+	printf("I am a loop in thread[%ld]\n", syscall(SYS_gettid));
 	return 0;
 }
 static void *routine_func( void * )
@@ -40,6 +41,12 @@ static void *routine_func( void * )
 }
 int main(int argc,char *argv[])
 {
+    if (argc != 2) 
+    {
+        printf("Usage:\n"
+                "example_thread [THREAD_COUNT]\n");
+        return -1;
+    }
 	int cnt = atoi( argv[1] );
 
 	pthread_t tid[ cnt ];
