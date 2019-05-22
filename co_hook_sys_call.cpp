@@ -576,7 +576,7 @@ extern int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int
 
 /* 
  * example usage:
- *              poll(NULL, 0, 25000); /* 发生协程切换使调用协程休眠25s */
+ *              poll(NULL, 0, 25000); //发生协程切换使调用协程休眠25s
  */
 int poll(struct pollfd fds[], nfds_t nfds, int timeout)
 {

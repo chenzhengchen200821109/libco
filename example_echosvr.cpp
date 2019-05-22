@@ -88,6 +88,7 @@ static void *readwrite_routine( void *arg )
 			co_poll( co_get_epoll_ct(),&pf,1,1000); // 切换出去
 
 			int ret = read( fd,buf,sizeof(buf) );
+            printf("Server read: %s\n", buf);
 			if( ret > 0 )
 			{
 				ret = write( fd,buf,ret );

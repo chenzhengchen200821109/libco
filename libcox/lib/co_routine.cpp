@@ -436,7 +436,7 @@ static int CoRoutineFunc( stCoRoutine_t *co,void * )
 {
 	if( co->pfn )
 	{
-        co_enable_hook_sys();
+        //co_enable_hook_sys();
 		co->pfn( co->arg );
 	}
 	co->cEnd = 1;
@@ -931,7 +931,11 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 		timeout = INT_MAX;
 	}
 	int epfd = ctx->iEpollFd; // epoll fd
+<<<<<<< HEAD:libcox/co_routine.cpp
 	stCoRoutine_t* self = co_self();
+=======
+	stCoRoutine_t* self = co_self(); // self有什么用呢？
+>>>>>>> 63939ecd98f8d3071c571b2982647c057659d95a:libcox/lib/co_routine.cpp
 
 	//1.struct change
 	/*
