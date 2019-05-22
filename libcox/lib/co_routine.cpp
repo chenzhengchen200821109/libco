@@ -931,7 +931,11 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 		timeout = INT_MAX;
 	}
 	int epfd = ctx->iEpollFd; // epoll fd
+<<<<<<< HEAD:libcox/co_routine.cpp
+	stCoRoutine_t* self = co_self();
+=======
 	stCoRoutine_t* self = co_self(); // self有什么用呢？
+>>>>>>> 63939ecd98f8d3071c571b2982647c057659d95a:libcox/lib/co_routine.cpp
 
 	//1.struct change
 	/*
@@ -988,6 +992,8 @@ int co_poll_inner( stCoEpoll_t *ctx,struct pollfd fds[], nfds_t nfds, int timeou
 			ev.data.ptr = arg.pPollItems + i;
 			ev.events = PollEvent2Epoll( fds[i].events ); // convert poll event to epoll event
 
+			// Register the target file descriptor fd on the epoll instance referred to by the file descriptor epfd 
+			// and associate the event event with the internal file linked to fd.
 			int ret = co_epoll_ctl( epfd,EPOLL_CTL_ADD, fds[i].fd, &ev );
 			if (ret < 0 && errno == EPERM && nfds == 1 && pollfunc != NULL) // EPERM means the target file fd does not support epoll.
 			{

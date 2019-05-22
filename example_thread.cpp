@@ -29,6 +29,7 @@
 
 int loop(void *)
 {
+	printf("I am a loop\n");
 	return 0;
 }
 static void *routine_func( void * )

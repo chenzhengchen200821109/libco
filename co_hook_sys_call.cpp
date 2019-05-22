@@ -49,7 +49,7 @@ typedef long long ll64_t;
 
 struct rpchook_t
 {
-	int user_flag;
+	int user_flag; //#define O_NONBLOCK	00004000
 	struct sockaddr_in dest; //maybe sockaddr_un;
 	int domain; //AF_LOCAL , AF_INET
 
@@ -192,7 +192,7 @@ static inline rpchook_t * alloc_by_fd( int fd )
 {
 	if( fd > -1 && fd < (int)sizeof(g_rpchook_socket_fd) / (int)sizeof(g_rpchook_socket_fd[0]) )
 	{
-		rpchook_t *lp = (rpchook_t*)calloc( 1,sizeof(rpchook_t) );
+		rpchook_t *lp = (rpchook_t*)calloc( 1,sizeof(rpchook_t) ); // 初始化为零
 		lp->read_timeout.tv_sec = 1;
 		lp->write_timeout.tv_sec = 1;
 		g_rpchook_socket_fd[ fd ] = lp;
