@@ -129,7 +129,7 @@ static void *readwrite_routine( void *arg )
 			{       
 				struct pollfd pf = { 0 };
 				pf.fd = fd;
-				pf.events = (POLLOUT|POLLERR|POLLHUP);
+				pf.events = (POLLOUT|POLLERR|POLLHUP); // 描述符可写
 				co_poll( co_get_epoll_ct(),&pf,1,200); 
 				//check connect
 				int error = 0;

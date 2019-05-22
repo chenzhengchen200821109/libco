@@ -115,7 +115,7 @@ static void *accept_routine( void * )
 	for(;;)
 	{
 		//printf("pid %ld g_readwrite.size %ld\n",getpid(),g_readwrite.size());
-		if( g_readwrite.empty() )
+		if( g_readwrite.empty() ) // readwrite_routine协程还未准备好
 		{
 			printf("empty\n"); //sleep
 			struct pollfd pf = { 0 };
