@@ -1175,6 +1175,8 @@ static void OnSignalProcessEvent( stTimeoutItem_t * ap )
 }
 
 stCoCondItem_t *co_cond_pop( stCoCond_t *link );
+
+/* unblock */
 int co_cond_signal( stCoCond_t *si )
 {
 	stCoCondItem_t * sp = co_cond_pop( si );
@@ -1203,7 +1205,7 @@ int co_cond_broadcast( stCoCond_t *si )
 	return 0;
 }
 
-
+/* block */
 int co_cond_timedwait( stCoCond_t *link,int ms )
 {
 	stCoCondItem_t* psi = (stCoCondItem_t*)calloc(1, sizeof(stCoCondItem_t));
