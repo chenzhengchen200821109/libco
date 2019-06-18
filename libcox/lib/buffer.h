@@ -155,7 +155,7 @@ class Buffer : public copyable
         std::string retrieveAsString(size_t len)
         {
             assert(len <= readableBytes());
-            string result(peek(), len);
+            std::string result(peek(), len);
             retrieve(len);
             return result;
         }

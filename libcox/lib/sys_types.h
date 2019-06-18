@@ -2,7 +2,6 @@
 #define __TYPES_H__
 
 #include <stdint.h>
-#include <string>
 #include <assert.h>
 #include "inner_pre.h"
 
@@ -10,13 +9,11 @@
 /// The most common stuffs.
 ///
 
-using std::string;
-
-//template<typename To, typename From>
-//inline To implicit_cast(From const &f)
-//{
-//    return f;
-//}
+template<typename To, typename From>
+inline To implicit_cast(From const &f)
+{
+    return f;
+}
 
 // When you upcast (that is, cast a pointer from type Foo to type
 // SuperclassOfFoo), it's fine to use implicit_cast<>, since upcasts
@@ -46,8 +43,6 @@ inline To down_cast(From* f)                     // so we only accept pointers
     if (false) {
         implicit_cast<From*, To>(0);
     }
-
-    return static_cast<To>(f);
 }
 
 #endif
