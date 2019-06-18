@@ -1,5 +1,6 @@
 #include "event_loop.h"
 #include "connector.h"
+#include "inetaddress.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -8,40 +9,17 @@
 
 int main(int argc,char *argv[])
 {
-    google::InitGoogleLogging(argv[0]);
-	int cnt = atoi( argv[3] ); //协程数量
-	int proccnt = atoi( argv[4] ); //进程数量
+    //google::InitGoogleLogging(argv[0]);
 
-	// 为什么要忽略SIGPIPE信号？
-	struct sigaction sa;
-	sa.sa_handler = SIG_IGN;
-	sigaction( SIGPIPE, &sa, NULL );
+    uint16_t port = static_cast<uint16_t>(atoi(argv[2]));
+    InetAddress serverAddr(argv[1], port);
 
     EventLoop loop;
+    Connector con(&loop, serverAddr);
 
-	for(int k=0;k<proccnt;k++)
-	{
+    con.Start();
+    loop.Run();
 
-		pid_t pid = fork();
-		if( pid > 0 ) {
-			continue;
-		} else if( pid < 0 ) {
-			break;
-		}
-        // child process
-		for(int i=0;i<cnt;i++)
-		{
-            Connector* conn = new Connector(&loop, argv[1], atoi(argv[2]));
-            //conn->Connect();
-            conn->Start();
-		}
-        loop.Run();
-
-		exit(0);
-	}
-    
-    // wait for all child process
-    wait(NULL);
-	return 0;
+    return 0;
 }
-/*./example_echosvr 127.0.0.1 10000 100 50*/
+

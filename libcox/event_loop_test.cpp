@@ -1,4 +1,5 @@
 #include "event_loop.h"
+#include <stdio.h>
 
 EventLoop* lp;
 
@@ -16,6 +17,7 @@ void period_routine(void)
 
 int main()
 {
+    //google::InitGoogleLogging("eventloop");
     EventLoop loop;
     
     lp = &loop;
