@@ -3,6 +3,8 @@
 
 #include "inner_pre.h"
 #include "co_routine.h"
+#include "inetaddress.h"
+#include <memory>
 #include <stack>
 
 class EventLoop;
@@ -12,44 +14,20 @@ class TCPServer;
 class Listener 
 {
     public:
-        Listener(EventLoop* loop, const char *ip, const unsigned short port, bool reuse); 
+        Listener(EventLoop* loop, const InetAddress& listenAddr); 
         ~Listener();
 	    void Listen(int backlog = SOMAXCONN);
         // nonblocking accept
         void Accept(); 
-        //struct Task
-        //{
-        //    int fd;
-        //    struct stCoRoutine_t *co;
-        //};
     private:
-       // bool IsEmpty()
-       // {
-       //     return pool.empty();
-       // }
-       // void Pop()
-       // {
-       //     pool.pop();
-       // }
-       // void Push(CoRoutine* co)
-       // {
-       //     pool.push(co);
-       // }
-       // CoRoutine* Top()
-       // {
-       //     return pool.top();
-       // }
-    private:
-        void SetAddr(const char *, const unsigned short shPort, struct sockaddr_in &addr);
+        //void SetAddr(const char *, const unsigned short shPort, struct sockaddr_in &addr);
         static void* HandleAcceptHelper(void *);
         void HandleAccept();
     private:
         EventLoop* loop_;
+        TCPServer* owner_;
         std::unique_ptr<CoRoutine> PtrAcCo; // accept coroutine
-        //std::stack<CoRoutine *> pool; // coroutine pool
-        const unsigned short port_;
-        const char* ip_;
-        bool reuse_;
+        InetAddress listenAddr_;
         int fd_;
 };
 

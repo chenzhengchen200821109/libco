@@ -56,6 +56,15 @@ out:
     return -1;
 }
 
+void sockets::bind(int sockfd, const struct sockaddr* addr)
+{
+  int ret = ::bind(sockfd, addr, static_cast<socklen_t>(sizeof(struct sockaddr_in6)));
+  if (ret < 0)
+  {
+    LOG_FATAL << "sockets::bind";
+  }
+}
+
 void sockets::SetKeepAlive(int fd, bool on) 
 {
     int optval = on ? 1 : 0;

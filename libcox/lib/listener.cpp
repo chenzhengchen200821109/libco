@@ -11,75 +11,70 @@
 #include <stack>
 #include "listener.h"
 
-extern std::stack<struct CoRoutine *> pool;
+//extern std::stack<struct CoRoutine *> pool;
 
-void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr);
+//void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr);
 
-static int SetNonBlock(int iSock)
-{
-    int iFlags;
+//static int SetNonBlock(int iSock)
+//{
+//    int iFlags;
 
-    iFlags = fcntl(iSock, F_GETFL, 0);
-    iFlags |= O_NONBLOCK;
-    iFlags |= O_NDELAY;
-    int ret = fcntl(iSock, F_SETFL, iFlags);
-    return ret;
-}
+//    iFlags = fcntl(iSock, F_GETFL, 0);
+//    iFlags |= O_NONBLOCK;
+//    iFlags |= O_NDELAY;
+//    int ret = fcntl(iSock, F_SETFL, iFlags);
+//    return ret;
+//}
 
-static int CreateTcpSocket(const unsigned short shPort /* = 0 */,const char *pszIP /* = "*" */,bool bReuse /* = false */)
-{
-	int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
-	if( fd >= 0 )
-	{
-		if(shPort != 0)
-		{
-			if(bReuse)
-			{
-				int nReuseAddr = 1;
-				setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&nReuseAddr,sizeof(nReuseAddr));
-			}
-			struct sockaddr_in addr ;
-			SetAddr(pszIP,shPort,addr);
-			int ret = bind(fd,(struct sockaddr*)&addr,sizeof(addr));
-			if( ret != 0)
-			{
-				close(fd);
-				return -1;
-			}
-		}
-	}
-	return fd;
-}
+//static int CreateTcpSocket(const unsigned short shPort /* = 0 */,const char *pszIP /* = "*" */,bool bReuse /* = false */)
+//{
+//	int fd = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
+//	if( fd >= 0 )
+//	{
+//		if(shPort != 0)
+//		{
+//			if(bReuse)
+//			{
+//				int nReuseAddr = 1;
+//				setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&nReuseAddr,sizeof(nReuseAddr));
+//			}
+//			struct sockaddr_in addr ;
+//			SetAddr(pszIP,shPort,addr);
+//			int ret = bind(fd,(struct sockaddr*)&addr,sizeof(addr));
+//			if( ret != 0)
+//			{
+//				close(fd);
+//				return -1;
+//			}
+//		}
+//	}
+//	return fd;
+//}
 
-void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr)
-{
-	bzero(&addr,sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(shPort);
-	int nIP = 0;
-	if( !pszIP || '\0' == *pszIP   
-	    || 0 == strcmp(pszIP,"0") || 0 == strcmp(pszIP,"0.0.0.0") 
-		|| 0 == strcmp(pszIP,"*") 
-	  )
-	{
-		nIP = htonl(INADDR_ANY);
-	}
-	else
-	{
-		nIP = inet_addr(pszIP);
-	}
-	addr.sin_addr.s_addr = nIP;
+//void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr)
+//{
+//	bzero(&addr,sizeof(addr));
+//	addr.sin_family = AF_INET;
+//	addr.sin_port = htons(shPort);
+//	int nIP = 0;
+//	if( !pszIP || '\0' == *pszIP   
+//	    || 0 == strcmp(pszIP,"0") || 0 == strcmp(pszIP,"0.0.0.0") 
+//		|| 0 == strcmp(pszIP,"*") 
+//	  )
+//	{
+//		nIP = htonl(INADDR_ANY);
+//	}
+//	else
+//	{
+//		nIP = inet_addr(pszIP);
+//	}
+//	addr.sin_addr.s_addr = nIP;
 
-}
+//}
 
-Listener::Listener(EventLoop* loop,
-        const char *ip, 
-        const unsigned short port,
-        bool reuse)
+Listener::Listener(EventLoop* loop,const InetAddress& listenAddr)
     : loop_(loop)
-    , ip_(ip)
-    , port_(port)
-    , reuse_(reuse)
+    , listenAddr_(listenAddr)
 {
     DLOG_TRACE;
     PtrAcCo.reset(new CoRoutine);
@@ -94,13 +89,15 @@ Listener::~Listener()
 
 void Listener::Listen(int backlog)
 {
-    fd_ = CreateTcpSocket(port_, ip_, reuse_);
+    //fd_ = CreateTcpSocket(port_, ip_, reuse_);
+    fd_ = sockets::CreateNonblockingSocket();
     if (fd_ == -1) {
         LOG_ERROR << "CreateTcpSocket failed";
         return;
     }
+    sockets::bind(fd_, listenAddr_.getSockAddr());
     listen(fd_, backlog);
-    SetNonBlock(fd_);
+    //SetNonBlock(fd_);
 }
 
 // nonblocking accept
@@ -120,8 +117,8 @@ void Listener::HandleAccept()
     
 	for( ; ; ) {
 		//printf("pid %ld g_readwrite.size %ld\n",getpid(),g_readwrite.size());
-		if(pool.empty()) {// readwrite_routine协程还未准备好
-            //LOG_TRACE << "I/O coroutine pool is not ready";
+		if((owner_->pool).empty()) {// readwrite_routine协程还未准备好
+            LOG_TRACE << "I/O coroutine pool is not ready";
 			printf("empty\n"); //sleep
 			struct pollfd pf = { 0 };
 			pf.fd = -1;
@@ -141,14 +138,14 @@ void Listener::HandleAccept()
 			co_poll(co_get_epoll_ct(), &pf, 1, 1000);
 			continue;
 		}
-		if(pool.empty()) {// readwrite_routine协程还未准备好
+		if((owner_->pool).empty()) {// readwrite_routine协程还未准备好
 			close( fd );
 			continue;
 		}
-		SetNonBlock(fd); // fd现在是connected fd啦
-		CoRoutine *co = pool.top();
+        sockets::SetNonBlockingSocket(fd); // fd现在是connected fd啦
+		CoRoutine *co = (owner_->pool).top();
 		co->fd = fd;
-		pool.pop();
+		(owner_->pool).pop();
 		co_resume(co->coroutine); // 执行readwrtie_routine协程
 	}
 }
@@ -157,6 +154,6 @@ void* Listener::HandleAcceptHelper(void *arg)
 {
     Listener *ls = (Listener *)arg;
     ls->HandleAccept();
-    return 0;
+    return NULL;
 }
 

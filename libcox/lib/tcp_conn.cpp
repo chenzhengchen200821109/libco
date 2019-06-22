@@ -5,21 +5,21 @@
 #include "sockets.h"
 #include "buffer.h"
 #include "utility.h"
+#include "logging.h"
 #include <memory>
 
 
-TCPConn::TCPConn(EventLoop* loop,
-                Connector* connector)
+TCPConn::TCPConn(EventLoop* loop, Connector* connector)
     : loop_(loop)
     , owner_(connector)
-    , fd_(owner_->GetFd())
+    , co_(owner_->GetCoRoutine())
 {
-    //DLOG_TRACE << "TCPConn::[" << name_ << "] channel=" << chan_.get() << " fd=" << sockfd << " addr=" << AddrToString();
+    DLOG_TRACE;
 }
 
 TCPConn:: ~TCPConn() 
 {
-    //DLOG_TRACE << "name=" << name()
+    DLOG_TRACE;
 }
 
 void TCPConn::Close() 
@@ -35,39 +35,45 @@ void TCPConn::Send(const void* data, size_t len)
 
 void TCPConn::Send(const std::string& str) 
 {
+    DLOG_TRACE;
     SendStringInLoop(str);
 }
 
-//void TCPConn::Send(const Slice& message)
-//{
-//    SendInLoop(message);
-//}
+void TCPConn::Send(const Slice& message)
+{
+    DLOG_TRACE;
+    SendInLoop(message);
+}
 
-//void TCPConn::Send(Buffer* buf)
-//{
-//    SendInLoop(buf->peek(), buf->readableBytes());
-//}
-//
-//void TCPConn::SendInLoop(const Slice& message)
-//{
-//    SendInLoop(message.data(), message.size());
-//}
+void TCPConn::Send(Buffer* buf)
+{
+    DLOG_TRACE;
+    SendInLoop(buf->peek(), buf->readableBytes());
+}
+
+void TCPConn::SendInLoop(const Slice& message)
+{
+    DLOG_TRACE;
+    SendInLoop(message.data(), message.size());
+}
 
 void TCPConn::SendStringInLoop(const std::string& str)
 {
+    DLOG_TRACE;
     SendInLoop(str.data(), str.size());
 }
 
 void TCPConn::SendInLoop(const void* data, size_t len)
 {
-    // data transfer between client and internal buffer
-    // should be all right
+    DLOG_TRACE;
     outputBuffer_.append(static_cast<const char *>(data), len);
  
 }
 
 void TCPConn::HandleRead(int sockfd)
 {
+    DLOG_TRACE;
+
     int savedErrno = 0;
     ssize_t n = inputBuffer_.readFd(sockfd, &savedErrno);
     if (n > 0)
@@ -87,6 +93,8 @@ void TCPConn::HandleRead(int sockfd)
 
 void TCPConn::HandleWrite(int sockfd)
 {
+    DLOG_TRACE;
+
     co_enable_hook_sys();
     ssize_t n = write(sockfd, outputBuffer_.peek(), outputBuffer_.readableBytes());
     if (n > 0)
@@ -98,42 +106,45 @@ void TCPConn::HandleWrite(int sockfd)
                 writeCompleteCallback_(shared_from_this());
         }
     }
-    else {
+    else 
+    {
         HandleError(sockfd);
-        //close(sockfd);
-        //owner_->SetFd(-1);
     }
 
 }
 
 void TCPConn::HandleClose(int sockfd)
 {
+    DLOG_TRACE;
+
     if (closeCallback_)
         closeCallback_(shared_from_this());
-    //DLOG_TRACE << "addr=" << AddrToString() << " fd=" << fd_ << " status_=" << StatusToString();
     close(sockfd);
-    owner_->SetFd(-1); 
+    co_->fd = -1; 
     SetState(kDisconnected);
 }
 
 //void DelayClose();
 void TCPConn::HandleError(int sockfd)
 {
-    //DLOG_TRACE << "fd=" << fd_ << " status=" << StatusToString();
+    DLOG_TRACE;
     HandleClose(sockfd); 
 }
 
 void TCPConn::ConnectEstablished(int sockfd)
 {
-    if (IsDisconnected()) {
-        // write data from user to internal buffer
+    DLOG_TRACE;
+
+    if (IsDisconnected()) 
+    {
         connectionCallback_(shared_from_this());
         SetState(kConnected);
     }
-    if (IsConnected()) {
+    if (IsConnected()) 
+    {
         // write data to remote peer
         HandleWrite(sockfd);    
-        if (owner_->GetFd() != -1)
+        if (co_->fd != -1)
         {
             HandleRead(sockfd);
         }

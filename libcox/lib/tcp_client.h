@@ -9,6 +9,7 @@
 #include <vector>
 #include <string>
 #include <queue>
+#include "inetaddress.h"
 
 class Connector;
 typedef std::shared_ptr<Connector> ConnectorPtr;
@@ -25,7 +26,7 @@ typedef std::shared_ptr<Connector> ConnectorPtr;
 class TCPClient 
 {
     public:
-        TCPClient(EventLoop* loop, const char *ip, const unsigned short port, int NumCo, const string& name);
+        TCPClient(EventLoop* loop, const InetAddress& serverAddr, int NumCo, const std::string& name);
         ~TCPClient(); 
         void Start();
         void setConnectionCallback(const ConnectionCallback& cb)
@@ -44,6 +45,10 @@ class TCPClient
         {
             closeCallback_ = cb;
         }
+        std::string Name() const
+        {
+            return name_;
+        }
     private: 
         //void Connect();
         void newConnection(int sockfd);
@@ -51,11 +56,11 @@ class TCPClient
         EventLoop* loop_;
         int NumCo_;
         const std::string name_;
-        //Connector connector_;
         ConnectionCallback connectionCallback_;
         MessageCallback messageCallback_;
         WriteCompleteCallback writeCompleteCallback_;
         CloseCallback closeCallback_;
+
         std::vector<ConnectorPtr> connectors_;
         std::queue<TCPConnPtr> connections_;
 };

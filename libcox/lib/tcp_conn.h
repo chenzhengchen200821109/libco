@@ -9,6 +9,7 @@
 
 class EventLoop;
 class Connector;
+class CoRoutine;
 
 class TCPConn : public std::enable_shared_from_this<TCPConn> 
 {
@@ -17,20 +18,14 @@ class TCPConn : public std::enable_shared_from_this<TCPConn>
         ~TCPConn(); 
 
         void Close();
-
-        //void Send(const char* s) 
-        //{
-        //    Send(s, strlen(s));
-        //}
+        void Send(const char* s) 
+        {
+            Send(s, strlen(s));
+        }
         void Send(const void* data, size_t len);
 	    void Send(const std::string& str); 
-        //void Send(const Slice& message);
-        //void Send(Buffer* buf);
-    public:
-        int GetFd() const 
-        {
-            return fd_;
-        }
+        void Send(const Slice& message);
+        void Send(Buffer* buf);
     public:
         void SetWriteCompleteCallback(const WriteCompleteCallback cb) 
         {
@@ -74,15 +69,16 @@ class TCPConn : public std::enable_shared_from_this<TCPConn>
     private:
         EventLoop* loop_;
         Connector* owner_; // use smart pointer
-        int fd_;
+        CoRoutine* co_;
+
         State state_;
         Buffer inputBuffer_;
         Buffer outputBuffer_;
 
-        ConnectionCallback connectionCallback_; // This will be called to the user application layer
-        MessageCallback messageCallback_; // This will be called to the user application layer
-        WriteCompleteCallback writeCompleteCallback_; // This will be called to the user application layer
-        CloseCallback closeCallback_; // This will be called to TCPClient or TCPServer
+        ConnectionCallback connectionCallback_;         // This will be called to the user application layer
+        MessageCallback messageCallback_;               // This will be called to the user application layer
+        WriteCompleteCallback writeCompleteCallback_;   // This will be called to the user application layer
+        CloseCallback closeCallback_;                   // This will be called to TCPClient or TCPServer
 };
 
 #endif

@@ -4,9 +4,11 @@
 #include "inner_pre.h"
 #include "tcp_callbacks.h"
 #include "listener.h"
+#include "inetaddress.h"
 #include <stack>
 
 class EventLoop;
+class CoRoutine;
 
 // We can use this class to create a TCP server.
 // The typical usage is :
@@ -42,20 +44,22 @@ class EventLoop;
 //
 class TCPServer 
 {
+    //friend class Listener;
     public:
-        TCPServer(EventLoop* loop, const unsigned short port, const char *ip, bool reuse, int num);
+        friend class Listener;
+        TCPServer(EventLoop* loop, const InetAddress& listenAddr, int num);
         ~TCPServer();
         //void Init();
         void Start();
-        EventLoop* GetLoop() const
-        {
-            return loop_;
-        }
-        struct Argument
-        {
-            void* arg;
-            CoRoutine* co;
-        };
+        //EventLoop* GetLoop() const
+        //{
+        //    return loop_;
+        //}
+        //struct Argument
+        //{
+        //    void* arg;
+        //    CoRoutine* co;
+        //};
     public:
         void SetConnectionCallback(const ConnectionCallback& cb)
         {
@@ -66,13 +70,14 @@ class TCPServer
             messageCallback_ = cb;
         }
     private:
-        static void* HandleIO(void *);
-        //void HandleIO(void *);
-        int CreateTcpSocket(const unsigned short port, const char *ip, bool reuse);
+        static void* HandleIOHelper(void *);
+        void* HandleIO(void*);
+        //int CreateTcpSocket(const unsigned short port, const char *ip, bool reuse);
     private:
         EventLoop* loop_;  // the listening loop
         Listener listener_;
-        const int num_;
+        std::stack<CoRoutine *> pool;
+        int num_;
         //std::stack<CoRoutine *> pool;
         ConnectionCallback connectionCallback_;
         MessageCallback messageCallback_;

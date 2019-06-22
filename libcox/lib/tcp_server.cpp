@@ -3,16 +3,12 @@
 #include "tcp_server.h"
 #include "co_routine.h"
 #include "listener.h"
-#include <map>
+#include <memory>
 
-std::stack<struct CoRoutine *> pool;
+//std::stack<struct CoRoutine *> pool;
 
-TCPServer::TCPServer(EventLoop* loop, 
-        const unsigned short port,
-        const char *ip,
-        bool reuse,
-        int num)
-    : listener_(loop, ip, port, reuse)
+TCPServer::TCPServer(EventLoop* loop, const InetAddress& listenAddr, int num)
+    : listener_(loop, listenAddr)
     , num_(num)
 {
     DLOG_TRACE;
@@ -26,10 +22,13 @@ TCPServer::TCPServer(EventLoop* loop,
         //argu->arg = this;
         //argu->co = Co.get();
         //::co_create(&(Co.get()->coroutine), NULL, HandleIO, argu);
-        struct CoRoutine* co = (struct CoRoutine *)calloc(1, sizeof(struct CoRoutine));
-        co->fd = -1;
-        ::co_create(&co->coroutine, NULL, HandleIO, co);
-        loop->QueueInLoop(co);
+        //struct CoRoutine* co = (struct CoRoutine *)calloc(1, sizeof(struct CoRoutine));
+        //co->fd = -1;
+        std::unique_ptr<CoRoutine> PtrCo(new CoRoutine);
+        PtrCo.get()->owner = this;
+        pool.push(PtrCo.get());
+        ::co_create(&(PtrCo.get()->coroutine), NULL, HandleIOHelper, PtrCo.get());
+        loop->QueueInLoop(std::move(PtrCo));
     }
     
 }
@@ -46,13 +45,16 @@ void TCPServer::Start()
     listener_.Accept();
 }
 
-//void* TCPServer::HandleIOHelper(void* arg)
-//{
-//    TCPServer* server = (TCPServer *)arg;
-//    server->HandleIO(co);
-//}
+void* TCPServer::HandleIOHelper(void* arg)
+{
+    //TCPServer* server = (TCPServer *)arg;
+    CoRoutine* co = (CoRoutine *)arg;
+    TCPServer* server = (TCPServer *)(co->owner);
+    server->HandleIO(co);
+    return NULL;
+}
 
-void* TCPServer::HandleIO(void* arg)
+void* TCPServer::HandleIO(void *arg)
 {
     co_enable_hook_sys();
 
@@ -60,7 +62,8 @@ void* TCPServer::HandleIO(void* arg)
     
 	char buf[ 1024 * 16 ];
 
-	for( ; ; ) {
+	for( ; ; ) 
+    {
 		if( -1 == co->fd )
 		{
 			pool.push( co );

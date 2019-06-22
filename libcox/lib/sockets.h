@@ -13,6 +13,7 @@ namespace sockets
 
 int SetNonBlockingSocket(int sockfd);
 int CreateNonblockingSocket();
+void bind(int sockfd, const struct sockaddr* addr);
 void SetKeepAlive(int sockfd, bool on);
 void SetReuseAddr(int sockfd);
 void SetReusePort(int sockfd);

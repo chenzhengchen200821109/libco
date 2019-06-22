@@ -10,17 +10,19 @@ class CoRoutine
     public:
         CoRoutine()
         {
-            coroutine = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+            coroutine = static_cast<struct stCoRoutine_t *>(calloc(1, sizeof(struct stCoRoutine_t)));
             fd = -1;
             functor = 0;
             seconds = 0;
+            owner = 0;
         }        
         CoRoutine(const Functor& f, int sec)
             : functor(f)
             , seconds(sec)
         {              
-            coroutine = (struct stCoRoutine_t *)calloc(1, sizeof(struct stCoRoutine_t));
+            coroutine = static_cast<struct stCoRoutine_t *>(calloc(1, sizeof(struct stCoRoutine_t)));
             fd = -1;
+            owner = 0;
         }              
         ~CoRoutine()   
         {
@@ -31,6 +33,7 @@ class CoRoutine
 	    int fd;
         Functor functor;
         int seconds; 
+        void* owner;
 };
 
 #endif
